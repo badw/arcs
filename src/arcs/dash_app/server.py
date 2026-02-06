@@ -1,4 +1,5 @@
 from multiprocessing import Condition
+import importlib.resources
 
 from arcs.dash_app.domino import terminate_when_parent_process_dies
 import dash
@@ -58,9 +59,8 @@ def start_dash(host: str,
         "rank_by_number_of_atoms": True,
         "shortest_path_method": 'Djikstra'
     }
-    
-    
-    dft_filename= './data/dft_data.json'
+    data_dir = importlib.resources.files("arcs").joinpath("data")
+    dft_filename= data_dir.joinpath("dft_data.json")
     
     ###################### layout of DASH template########################
     app = dash.Dash(
