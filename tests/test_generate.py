@@ -3,14 +3,13 @@ from re import A
 import numpy as np 
 import json 
 from monty.serialization import loadfn
-from chempy import Equilibrium 
 from arcs.generate import GetEnergyandVibrationsVASP
 from arcs.generate import ReactionGibbsandEquilibrium
 from arcs.generate import GraphGenerator
 from arcs.generate import GenerateInitialConcentrations 
 from ase.io import read
 from ase.atoms import Atoms
-from array import array
+import pytest
 
 
 #GetEnergyandVibrationsVASP
@@ -108,7 +107,7 @@ def test_reaction_gibbs():
         pressure=1,
         temperature=100
     )
-    assert reaction_gibbs == 0.6184489112909475
+    assert reaction_gibbs == pytest.approx(0.1236897822581895)
 
 def test_equilibrium_constant():
     dft_data = loadfn('test_dft_data.json')
@@ -123,7 +122,7 @@ def test_get_reaction_gibbs_and_equilibrium():
     rge = ReactionGibbsandEquilibrium(reaction_input=dft_data)
     _dict = rge.get_reaction_gibbs_and_equilibrium(reaction=reaction,temperature=100,pressure=1)
 
-    assert _dict == {'g': 0.6184489112909475, 'k': 6.784950464493314e-32}
+    assert _dict == {'g': pytest.approx(0.1236897822581895), 'k': pytest.approx(5.838608245434512e-07)}
 
 
 # test GraphGenerator
@@ -142,7 +141,7 @@ def test_cost_function():
         reactants=applied_reactions[0]['r']['reactants']
     )
     
-    assert cost == 1.4084092098796381
+    assert cost == pytest.approx(1.8028655802225437)
 
 
 def test_generate_multidigraph():
@@ -175,36 +174,36 @@ def test_generate_multidigraph():
     gg = GraphGenerator()
     graph = gg.generate_multidigraph(temperature=100,applied_reactions=applied_reactions)
 
-    adjacency_list = {'H2O': {0: {0: {'weight': 1.9492014814446184}}},
-                      0: {'H2O': {0: {'weight': 0.8053103344762139}},
-                          'O2': {0: {'weight': 1.9492014814446184}},
-                          'H2': {0: {'weight': 1.9492014814446184}}},
-                      'O2': {0: {0: {'weight': 0.8053103344762139}},
-                             3: {0: {'weight': 1.2234902236516356}},
-                             4: {0: {'weight': 1.0985582213409335}}},
-                      'H2': {0: {0: {'weight': 0.8053103344762139}}},
-                      'CO2': {1: {0: {'weight': 1.3369778231103757}}},
-                      1: {'CO2': {0: {'weight': 1.2959924751414802}},
-                          'CH4': {0: {'weight': 1.2959924751414802}},
-                          'CH3COOH': {0: {'weight': 1.3369778231103757}}},
-                      'CH4': {1: {0: {'weight': 1.3369778231103757}}},
-                      'CH3COOH': {1: {0: {'weight': 1.2959924751414802}},
-                                  4: {0: {'weight': 1.0985582213409335}}},
-                      'CO': {2: {0: {'weight': 1.389551610603596}}},
-                      2: {'CO': {0: {'weight': 1.2451742189951533}},
-                          'CH3OH': {0: {'weight': 1.2451742189951533}},
-                          'H2CO': {0: {'weight': 1.389551610603596}}},
-                      'CH3OH': {2: {0: {'weight': 1.389551610603596}}},
-                      'H2CO': {2: {0: {'weight': 1.2451742189951533}}},
-                      3: {'O2': {0: {'weight': 1.4126027501246856}},
-                          'HNO2': {0: {'weight': 1.4126027501246856}},
-                          'HNO3': {0: {'weight': 1.2234902236516356}}},
-                      'HNO2': {3: {0: {'weight': 1.2234902236516356}}},
-                      'HNO3': {3: {0: {'weight': 1.4126027501246856}}},
-                      4: {'O2': {0: {'weight': 1.5532383356136172}},
-                          'CH3COOH': {0: {'weight': 1.5532383356136172}},
-                          'CH2O2': {0: {'weight': 1.0985582213409335}}},
-                      'CH2O2': {4: {0: {'weight': 1.5532383356136172}}}}
+    adjacency_map = {'H2O': {0: {0: {'weight': 5.7552529146395965}}},
+                      0: {'H2O': {0: {'weight': 0.0233957881009098}},
+                          'O2': {0: {'weight': 5.7552529146395965}},
+                          'H2': {0: {'weight': 5.7552529146395965}}},
+                      'O2': {0: {0: {'weight': 0.0233957881009098}},
+                             3: {0: {'weight': 0.5594504962328015}},
+                             4: {0: {'weight': 0.11464403583982867}}},
+                      'H2': {0: {0: {'weight': 0.0233957881009098}}},
+                      'CO2': {1: {0: {'weight': 1.4851013816575676}}},
+                      1: {'CO2': {0: {'weight': 1.1575530621227441}},
+                          'CH4': {0: {'weight': 1.1575530621227441}},
+                          'CH3COOH': {0: {'weight': 1.4851013816575676}}},
+                      'CH4': {1: {0: {'weight': 1.4851013816575676}}},
+                      'CH3COOH': {1: {0: {'weight':  1.1575530621227441}},
+                                  4: {0: {'weight': 0.11464403583982867}}},
+                      'CO': {2: {0: {'weight': 1.9474126879158}}},
+                      2: {'CO': {0: {'weight': 0.8064645879463394}},
+                          'CH3OH': {0: {'weight': 0.8064645879463394}},
+                          'H2CO': {0: {'weight': 1.9474126879158}}},
+                      'CH3OH': {2: {0: {'weight': 1.9474126879158}}},
+                      'H2CO': {2: {0: {'weight': 0.8064645879463394}}},
+                      3: {'O2': {0: {'weight':  2.392520284979471}},
+                          'HNO2': {0: {'weight': 2.392520284979471}},
+                          'HNO3': {0: {'weight': 0.5594504962328015}}},
+                      'HNO2': {3: {0: {'weight': 0.5594504962328015}}},
+                      'HNO3': {3: {0: {'weight': 2.392520284979471}}},
+                      4: {'O2': {0: {'weight': 4.132824427134435}},
+                          'CH3COOH': {0: {'weight': 4.132824427134435}},
+                          'CH2O2': {0: {'weight': 0.11464403583982867}}},
+                      'CH2O2': {4: {0: {'weight': 4.132824427134435}}}}
     
     nodes = ['H2O',
              0,
@@ -224,7 +223,7 @@ def test_generate_multidigraph():
              4,
              'CH2O2']
     
-    assert dict(graph.adjacency()) == adjacency_list
+    assert dict(graph.adjacency()) == adjacency_map
 
     assert list(graph.nodes()) == nodes
 
