@@ -57,6 +57,7 @@ changelog = "https://github.com/badw/arcs/tree/main/CHANGELOG.md"
 
 [tool.setuptools.package-data]
 template = ["py.typed"]
+arcs = ["data/*.json"]
 
 [tool.pyright]
 include = ["arcs"]
