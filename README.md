@@ -1,3 +1,4 @@
+[![Tests](https://github.com/badw/arcs/actions/workflows/tests.yml/badge.svg)](https://github.com/badw/reactit/actions/workflows/tests.yml)
 
 <div id="toc">
 <img src="./static/ARCS_Logo.png" width="100" align="left" alt="ARCS Logo seasoned by ChatGPT"> 
