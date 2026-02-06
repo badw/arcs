@@ -513,16 +513,20 @@ class ReactionGibbsandEquilibrium:
             )
             for compound in reaction_compounds
         }
-        prod_sum = np.sum([
-            gibbs[compound] * products[compound]
-            for compound in gibbs
-            if compound in products
-        ])
-        reac_sum = np.sum([
-            gibbs[compound] * reactants[compound]
-            for compound in gibbs
-            if compound in reactants
-        ])
+        prod_sum = np.sum(
+            [
+                gibbs[compound] * products[compound]
+                for compound in gibbs
+                if compound in products
+            ]
+        )
+        reac_sum = np.sum(
+            [
+                gibbs[compound] * reactants[compound]
+                for compound in gibbs
+                if compound in reactants
+            ]
+        )
 
         return (
             float(prod_sum - reac_sum) / num_atoms
