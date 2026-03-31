@@ -498,7 +498,6 @@ class ReactionGibbsandEquilibrium:
         reaction: dict,  # reactit dict
         pressure: float,  # in bar
         temperature: float,  #  in K
-        normalise_by_reactant_atoms: bool = False
     ) -> float:
         """
         returns the Gibbs Free Energy of Reaction for a given reaction (dict).
@@ -552,14 +551,7 @@ class ReactionGibbsandEquilibrium:
             ]
         )
 
-        if normalise_by_reactant_atoms:
-            return (
-                float(prod_sum - reac_sum) / num_atoms
-            )  # this is in number of reactant atoms... to avoid super large K values
-        else:
-            return (
-                float(prod_sum - reac_sum)
-            )
+        return float(prod_sum - reac_sum)
 
     @staticmethod
     def equilibrium_constant(
@@ -638,6 +630,7 @@ class GraphGenerator:
         gibbs_free_energy: float,  # in eV
         temperature: float,  # in K
         reactants: dict,
+        normalise_by_reactant_atoms: bool = True
     ) -> float:
         """
         takes a gibbs free energy of reaction and normalises it using a cost function taken from:
@@ -651,27 +644,29 @@ class GraphGenerator:
         num_reactant_atoms = 5
 
         """
+        if normalise_by_reactant_atoms:
+            compounds = []
+            for reactant, coefficient in reactants.items():
+                for i in range(coefficient):
+                    compounds.append(reactant)
 
-        compounds = []
-        for reactant, coefficient in reactants.items():
-            for i in range(coefficient):
-                compounds.append(reactant)
-
-        #        num_atoms = np.sum(
-        #            [
-        #                np.sum(
-        #                    [
-        #                        y for x, y in parse_molecule(compound).items()
-        #                    ]
-        #                )
-        #                for compound in compounds
-        #            ]
-        #        )
+            num_atoms = np.sum(
+                [
+                    np.sum(
+                        [
+                            y for x, y in parse_molecule(compound).items()
+                        ]
+                    )
+                    for compound in compounds
+                ]
+            )
+        else:
+            num_atoms = 1
 
         return (
             np.log(
-                1 + (273 / temperature) * np.exp(gibbs_free_energy)
-            )  # /num_atoms/1)) #as we have made the Gibbs free energy per reactnat atom
+                1 + (273 / temperature) * np.exp(gibbs_free_energy / num_atoms)
+            )
         )
 
     def generate_multidigraph(
