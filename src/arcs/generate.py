@@ -574,6 +574,7 @@ class ReactionGibbsandEquilibrium:
         reaction,
         temperature: float,  # in K
         pressure: float,  # in bar
+        log_K: bool = False,
     ) -> dict:
         """
         given a reaction dictionary object (from reactit), the function generates a dictionary with both gibbs free energy and equilibrium constant
@@ -603,7 +604,7 @@ class ReactionGibbsandEquilibrium:
             reaction=reaction, temperature=temperature, pressure=pressure
         )
         equilibrium_constant = self.equilibrium_constant(
-            gibbs_free_energy=gibbs_free_energy, temperature=temperature
+            gibbs_free_energy=gibbs_free_energy, temperature=temperature, log_K=log_K
         )
         if equilibrium_constant == np.inf:
             warnings.warn(
