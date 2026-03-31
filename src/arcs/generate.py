@@ -568,6 +568,7 @@ class ReactionGibbsandEquilibrium:
             K = -(gibbs_free_energy) / ((Boltzmann / e) * temperature)
         else:
             K = np.exp(-(gibbs_free_energy) / ((Boltzmann / e) * temperature))
+
         return K
 
     def get_reaction_gibbs_and_equilibrium(
@@ -613,7 +614,7 @@ class ReactionGibbsandEquilibrium:
             warnings.warn(
                 f"{reaction['reaction_string']} has K={equilibrium_constant}")
 
-        return {"g": gibbs_free_energy, "k": equilibrium_constant} if self.log_K else {"g": gibbs_free_energy, "log_k": equilibrium_constant}
+        return {"g": gibbs_free_energy, "log_k": equilibrium_constant} if self.log_K else {"g": gibbs_free_energy, "k": equilibrium_constant}
 
 
 class GraphGenerator:
@@ -675,6 +676,7 @@ class GraphGenerator:
         self,
         temperature: float,  # in K
         applied_reactions: list,
+        log_K: bool = False,
     ) -> nx.multidigraph:
         """
         This function generates reaction graph in networkx weighted using the self.costfunction
@@ -710,22 +712,18 @@ class GraphGenerator:
 
         reactions = {i: r["r"] for i, r in enumerate(applied_reactions)}
 
-        try:  # probably a better way to determine between "k" and "log_k" but for now this will do
-            equilibrium_constants = {i: r["k"]
-                                     for i, r in enumerate(applied_reactions)}
+        if log_K:
+            keys = ["log_k", "log_equilibrium_constant"]
+        else:
+            keys = ["k", "equilibrium_constant"]
 
-            nx.set_node_attributes(graph, reactions, name="reaction")
-            nx.set_node_attributes(
-                graph, equilibrium_constants, name="equilibrium_constant"
-            )
-        except Exception:  # should be AttributeError?
-            equilibrium_constants = {i: r["log_k"]
-                                     for i, r in enumerate(applied_reactions)}
+        equilibrium_constants = {i: r[keys[0]]
+                                 for i, r in enumerate(applied_reactions)}
 
-            nx.set_node_attributes(graph, reactions, name="reaction")
-            nx.set_node_attributes(
-                graph, equilibrium_constants, name="log_equilibrium_constant"
-            )
+        nx.set_node_attributes(graph, reactions, name="reaction")
+        nx.set_node_attributes(
+            graph, equilibrium_constants, name=keys[1]
+        )
 
         return graph
 
@@ -776,7 +774,7 @@ class GraphGenerator:
                 applied_reactions.append(g_k_dict)
 
         graph = self.generate_multidigraph(
-            applied_reactions=applied_reactions, temperature=temperature
+            applied_reactions=applied_reactions, temperature=temperature, log_K=log_K
         )
         rge.raise_warnings()
         return graph
