@@ -91,7 +91,10 @@ class AnalyseSampling:
     #        return(d)
     @staticmethod
     def flip_reaction(reaction_data):
-        k = reaction_data["equilibrium_constant"]
+        try:
+            k = reaction_data["equilibrium_constant"]
+        except KeyError:
+            k = reaction_data["log_equilibrium_constant"]
         reaction_string = reaction_data["reaction"]["reaction_string"]
         reactants = reaction_data["reaction"]["reactants"]
         products = reaction_data["reaction"]["products"]
@@ -114,10 +117,12 @@ class AnalyseSampling:
                 if equation:
                     if flip_reaction:
                         equations.append(
-                            self.flip_reaction(equation)["reaction"]["reaction_string"]
+                            self.flip_reaction(equation)[
+                                "reaction"]["reaction_string"]
                         )
                     else:
-                        equations.append(equation["reaction"]["reaction_string"])
+                        equations.append(
+                            equation["reaction"]["reaction_string"])
 
         statistics = Counter(equations)
 
@@ -229,12 +234,12 @@ class AnalyseSampling:
             except Exception:
                 compound_nodes.append(node)
         # reaction node formatting
-        ## reaction node sizes = 8
+        # reaction node sizes = 8
         reaction_node_sizes = {
             str(i): 8 for i, r in enumerate(reaction_nodes)
         }  # reaction['frequency']
         nx.set_node_attributes(G, reaction_node_sizes, name="size")
-        ## reaction_colour set to frequency
+        # reaction_colour set to frequency
         # frequencies = pd.Series({str(i):reaction['frequency']  for i,reaction in rs.items()}) #
         colour_map = mpl.colormaps[cmap]
         norm = Normalize(
@@ -262,7 +267,7 @@ class AnalyseSampling:
             g.node_map[str(i)]["shape"] = "circle"
             g.node_map[str(i)]["title"] = self.flip_reaction(reaction_dict)["reaction"][
                 "reaction_string"
-            ]  #'{} ; frequency = {}'.format(
+            ]  # '{} ; frequency = {}'.format(
             # reaction_dict['reaction']['reaction_string'],
             # reaction_dict['reaction']['frequency']
             # )

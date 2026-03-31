@@ -7,6 +7,7 @@ import numpy as np
 import tqdm_pathos
 import itertools as it
 from arcs.generate import parse_molecule
+from scipy.optimize import fsolve
 
 
 class Traversal:
@@ -49,12 +50,14 @@ class Traversal:
                 num_atoms = []
                 for species, coefficient in reactants.items():
                     num_atoms.append(
-                        np.sum(list(parse_molecule(species).values())) * coefficient
+                        np.sum(list(parse_molecule(species).values())) *
+                        coefficient
                     )
                 return np.sum(num_atoms)
             else:
                 reaction_dict = self.graph.nodes[candidate_reaction]["reaction"]
-                num_reactants = np.sum(list(reaction_dict["reactants"].values()))
+                num_reactants = np.sum(
+                    list(reaction_dict["reactants"].values()))
                 num_products = np.sum(list(reaction_dict["products"].values()))
                 return num_reactants + num_products
         else:
@@ -142,14 +145,16 @@ class Traversal:
         # get the probabilities based upon relative concentrations:
         p_1 = {k: v / sum(concs.values()) for k, v in concs.items()}
         # now filter based upon the probability threshold: (discovery)
-        p_2 = {k: v for k, v in p_1.items() if v >= self.discovery_threshold / 100}
+        p_2 = {k: v for k, v in p_1.items() if v >=
+               self.discovery_threshold / 100}
         if not p_2:
             return []
         # remake the probabilities
         p_3 = {k: v / sum(p_2.values()) for k, v in p_2.items()}
         # make a list of choices based upon the probabilities
         available = list(
-            np.random.choice(a=list(p_3), size=len(concs) * 10, p=list(p_3.values()))
+            np.random.choice(a=list(p_3), size=len(
+                concs) * 10, p=list(p_3.values()))
         )
         #  now make a list max_compounds long of random choices based on available
         choices = {}
@@ -158,10 +163,11 @@ class Traversal:
                 compound = np.random.choice(available)
                 choices[compound] = p_3[compound]
 
-                available = list(filter(lambda a: a != list(choices)[i - 1], available))
+                available = list(
+                    filter(lambda a: a != list(choices)[i - 1], available))
             except ValueError:
                 pass
-        return list(choices)[0 : np.random.randint(2, self.max_compounds)]
+        return list(choices)[0: np.random.randint(2, self.max_compounds)]
 
     def get_weighted_reaction_rankings(self, weighted_random_compounds: list, **kws):
         """
@@ -226,7 +232,7 @@ class Traversal:
 
         rankings = dict(
             sorted(rankings.items(), key=lambda item: item[1])[
-                0 : self.maximum_reaction_number
+                0: self.maximum_reaction_number
             ]
         )
 
@@ -242,7 +248,8 @@ class Traversal:
             k: 1 / v**2 for k, v in ranked_reactions.items()
         }  # here higher is better
         # added a square multiplier to force more the larger coefficients
-        probabilities = {k: v / sum(weights.values()) for k, v in weights.items()}
+        probabilities = {k: v / sum(weights.values())
+                         for k, v in weights.items()}
         chosen_reaction = np.random.choice(
             [
                 np.random.choice(
@@ -270,7 +277,8 @@ class Traversal:
 
         substances = {}
         for compound in list(it.chain(*[list(reactants) + list(products)])):
-            substances[compound] = Substance.from_formula(compound, **{"charge": 0})
+            substances[compound] = Substance.from_formula(
+                compound, **{"charge": 0})
 
         equation = Equilibrium(reac=reactants, prod=products, param=k)
         try:
@@ -301,16 +309,84 @@ class Traversal:
             else:
                 assert result.success
             for compound, concentration in enumerate(result.conc):
-                _concs[equilibrium_reaction.substance_names()[compound]] = concentration
+                _concs[equilibrium_reaction.substance_names()[compound]
+                       ] = concentration
             return _concs
         except Exception:
             return None
+
+    @staticmethod
+    def arcs_equilibrium_concentrations(
+        concentrations: dict,
+        node_data: dict,
+    ):
+        """
+        attempt at own version of equilibrium_concentrations bypassing chempy
+        """
+        warnings.simplefilter("ignore")
+        _concs = copy.deepcopy(concentrations)
+
+        reactants = node_data["reaction"]["reactants"]
+        products = node_data["reaction"]["products"]
+
+        try:
+            K = node_data["equilibrium_constant"]
+            log_K = False
+        except KeyError:  # attribute error?
+            K = node_data["log_equilibrium_constant"]
+            log_K = True
+        # K = node_data["equilibrium_constant"] if not log_K else node_data["log_equilibrium_constant"]
+
+        def equilibrium_objective(x, log_k):
+            current_concs = {}
+            for sp, coeff in reactants.items():
+                current_concs[sp] = _concs.get(
+                    sp, 0) - (coeff * x)
+            for sp, coeff in products.items():
+                current_concs[sp] = _concs.get(
+                    sp, 0) + (coeff * x)
+
+            # Physical constraint: Concentrations cannot be negative
+            if any(val <= 0 for val in current_concs.values()):
+                return 1e10
+
+            if log_k:
+                # log10(Q) = sum(coeff * log10(products)) - sum(coeff * log10(reactants))
+                log_q_num = sum(
+                    coeff * np.log10(current_concs[sp]) for sp, coeff in products.items())
+                log_q_den = sum(
+                    coeff * np.log10(current_concs[sp]) for sp, coeff in reactants.items())
+                log_q = log_q_num - log_q_den
+
+                return log_q - K  # Target: log(Q) - log(K) = 0
+            else:
+                # Standard space: Q - K = 0
+                num = np.prod([current_concs[sp]**coeff for sp,
+                              coeff in products.items()])
+                den = np.prod([current_concs[sp]**coeff for sp,
+                              coeff in reactants.items()])
+                return (num / den) - K
+
+        # Solver setup
+        x_guess = 0.01  # small is a good starting point
+        x_solution = fsolve(equilibrium_objective, x_guess, log_K)
+        x = x_solution[0]
+
+        # Final Concentration Mapping
+
+        for sp, c in reactants.items():
+            _concs[sp] = _concs[sp] - (c * x)
+        for sp, c in products.items():
+            _concs[sp] = _concs[sp]+(c*x)
+
+        return _concs
 
     def random_walk(
         self,
         initial_concentrations: dict,
         chempy_sane=True,  # typically for very large
-        **kws,
+        use_chempy=True,
+        ** kws,
     ) -> dict:
         """
         does a random sampling of the reaction network with max_steps  DEFAULT = 10.
@@ -352,24 +428,38 @@ class Traversal:
             chosen_reaction_index = self.choose_reaction(
                 ranked_reactions=ranked_reactions
             )
-            # 5 generate a chgempy eqsystem
-            eqsystem = self.generate_chempy_eqsystem(index=chosen_reaction_index)
+            if use_chempy:
+                # 5 generate a chempy eqsystem
+                eqsystem = self.generate_chempy_eqsystem(
+                    index=chosen_reaction_index)
 
             # 6 get equilibrium_concentrations and update relevant dictionaries.
-            final_concentrations = self.chempy_equilibrium_concentrations(
-                concentrations=_concentrations,
-                equilibrium_reaction=eqsystem,
-                chempy_sane=chempy_sane,
-            )
+                final_concentrations = self.chempy_equilibrium_concentrations(
+                    concentrations=_concentrations,
+                    equilibrium_reaction=eqsystem,
+                    chempy_sane=chempy_sane,
+                )
+            else:
+                final_concentrations = self.arcs_equilibrium_concentrations(
+                    node_data=self.graph.nodes[chosen_reaction_index], concentrations=_concentrations)
+
             if final_concentrations:
                 i += 1
                 concentrations[i] = final_concentrations
-                reactionstats[i] = {
-                    "reaction": self.graph.nodes[chosen_reaction_index]["reaction"],
-                    "equilibrium_constant": self.graph.nodes[chosen_reaction_index][
-                        "equilibrium_constant"
-                    ],
-                }
+                try:
+                    reactionstats[i] = {
+                        "reaction": self.graph.nodes[chosen_reaction_index]["reaction"],
+                        "equilibrium_constant": self.graph.nodes[chosen_reaction_index][
+                            "equilibrium_constant"
+                        ],
+                    }
+                except KeyError:
+                    reactionstats[i] = {
+                        "reaction": self.graph.nodes[chosen_reaction_index]["reaction"],
+                        "log_equilibrium_constant": self.graph.nodes[chosen_reaction_index][
+                            "log_equilibrium_constant"
+                        ],
+                    }
 
         return {"concentrations": concentrations, "reaction_statistics": reactionstats}
 
