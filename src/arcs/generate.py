@@ -12,6 +12,7 @@ import ase
 import re
 from collections import defaultdict
 from monty.serialization import loadfn
+import warnings
 
 
 def get_compound_directory(base, compound, size):
@@ -358,7 +359,8 @@ class GetEnergyandVibrationsVASP:
         returns a string
         """
         aseatoms = self.get_atoms()
-        pg = PointGroupAnalyzer(AseAtomsAdaptor.get_molecule(aseatoms)).get_pointgroup()
+        pg = PointGroupAnalyzer(
+            AseAtomsAdaptor.get_molecule(aseatoms)).get_pointgroup()
 
         return pg.sch_symbol
 
@@ -458,6 +460,7 @@ class ReactionGibbsandEquilibrium:
     def __init__(self, reaction_input: dict):
 
         self.reaction_input = reaction_input
+        self.gibbs_warnings = {}
 
     @staticmethod
     def Gibbs(
@@ -475,7 +478,8 @@ class ReactionGibbsandEquilibrium:
             atoms=Atoms.fromdict(dft_dict["atoms"]),
             symmetrynumber=dft_dict["rotation_num"],
             spin=dft_dict["spin"],
-            natoms=Atoms.fromdict(dft_dict["atoms"]).get_global_number_of_atoms(),
+            natoms=Atoms.fromdict(
+                dft_dict["atoms"]).get_global_number_of_atoms(),
             ignore_imag_modes=True,
         )
 
@@ -485,11 +489,16 @@ class ReactionGibbsandEquilibrium:
 
         return gibbs_free_energy
 
+    def raise_warnings(self):
+        for compound, warn_info in self.gibbs_warnings.items():
+            warnings.warn(f"{compound}: {warn_info['warning']}", UserWarning)
+
     def reaction_gibbs(
         self,
         reaction: dict,  # reactit dict
-        pressure: float,  # in in bar
+        pressure: float,  # in bar
         temperature: float,  #  in K
+        normalise_by_reactant_atoms: bool = False
     ) -> float:
         """
         returns the Gibbs Free Energy of Reaction for a given reaction (dict).
@@ -505,14 +514,29 @@ class ReactionGibbsandEquilibrium:
             num_atoms += np.sum(list(parse_molecule(reactant).values())) * coeff
         reaction_compounds = list(products) + list(reactants)
 
-        gibbs = {
-            compound: self.Gibbs(
-                dft_dict=self.reaction_input[compound],
-                temperature=temperature,
-                pressure=pressure,
-            )
-            for compound in reaction_compounds
-        }
+        gibbs = {}
+        for compound in reaction_compounds:
+            with warnings.catch_warnings(record=True) as w:
+                # warnings.simplefilter("always")
+                gfe = self.Gibbs(
+                    dft_dict=self.reaction_input[compound],
+                    temperature=temperature,
+                    pressure=pressure,
+                )
+                gibbs[compound] = gfe
+                if w:
+                    self.gibbs_warnings[compound] = {
+                        "warning": str(w[0].message)}
+
+        #        gibbs = {
+        #            compound: self.Gibbs(
+        #                dft_dict=self.reaction_input[compound],
+        #                temperature=temperature,
+        #                pressure=pressure,
+        #            )
+        #            for compound in reaction_compounds
+        #        }
+
         prod_sum = np.sum(
             [
                 gibbs[compound] * products[compound]
@@ -528,27 +552,36 @@ class ReactionGibbsandEquilibrium:
             ]
         )
 
-        return (
-            float(prod_sum - reac_sum) / num_atoms
-        )  # this is in number of reactant atoms... to avoid super large K values
+        if normalise_by_reactant_atoms:
+            return (
+                float(prod_sum - reac_sum) / num_atoms
+            )  # this is in number of reactant atoms... to avoid super large K values
+        else:
+            return (
+                float(prod_sum - reac_sum)
+            )
 
     @staticmethod
     def equilibrium_constant(
         gibbs_free_energy: float,
-        temperature=float,  # in K
+        temperature: float,  # in K
+        log_K: bool = False,
     ) -> float:
         """
         returns an equilibrium constant, K, from the Gibbs Free Energy of Reaction (in eV)
         from DeltaG = -k_B T ln(K)
         """
-        K = np.exp(-(gibbs_free_energy) / (Boltzmann / e * temperature))
+        if log_K:
+            K = -(gibbs_free_energy) / ((Boltzmann / e) * temperature)
+        else:
+            K = np.exp(-(gibbs_free_energy) / ((Boltzmann / e) * temperature))
         return K
 
     def get_reaction_gibbs_and_equilibrium(
         self,
         reaction,
-        temperature=float,  # in K
-        pressure=float,  # in bar
+        temperature: float,  # in K
+        pressure: float,  # in bar
     ) -> dict:
         """
         given a reaction dictionary object (from reactit), the function generates a dictionary with both gibbs free energy and equilibrium constant
@@ -564,7 +597,8 @@ class ReactionGibbsandEquilibrium:
             from reactit import ReactionGenerator
 
             try:
-                reaction_dict = ReactionGenerator.get_reactants_products(reaction)
+                reaction_dict = ReactionGenerator.get_reactants_products(
+                    reaction)
                 reaction = {
                     "reaction_string": reaction,
                     "reactants": reaction_dict[0],
@@ -579,6 +613,12 @@ class ReactionGibbsandEquilibrium:
         equilibrium_constant = self.equilibrium_constant(
             gibbs_free_energy=gibbs_free_energy, temperature=temperature
         )
+        if equilibrium_constant == np.inf:
+            warnings.warn(
+                f"{reaction['reaction_string']} has K={equilibrium_constant}")
+        elif equilibrium_constant == float(0):
+            warnings.warn(
+                f"{reaction['reaction_string']} has K={equilibrium_constant}")
         return {"g": gibbs_free_energy, "k": equilibrium_constant}
 
 
@@ -672,7 +712,8 @@ class GraphGenerator:
             )  # products -> reaction
 
         reactions = {i: r["r"] for i, r in enumerate(applied_reactions)}
-        equilibrium_constants = {i: r["k"] for i, r in enumerate(applied_reactions)}
+        equilibrium_constants = {i: r["k"]
+                                 for i, r in enumerate(applied_reactions)}
 
         nx.set_node_attributes(graph, reactions, name="reaction")
         nx.set_node_attributes(
@@ -729,6 +770,7 @@ class GraphGenerator:
         graph = self.generate_multidigraph(
             applied_reactions=applied_reactions, temperature=temperature
         )
+        rge.raise_warnings()
         return graph
 
     def from_dict(
@@ -797,7 +839,8 @@ class GenerateInitialConcentrations:
         generate fully random concentrations
         returns a dictionary of compounds with a random concentration
         """
-        compounds = [node for node in self.graph.nodes() if isinstance(node, str)]
+        compounds = [node for node in self.graph.nodes()
+                     if isinstance(node, str)]
         ic = {c: np.random.random() / 1e5 for c in compounds}
         if not include_co2:
             ic["CO2"] = 1
@@ -809,7 +852,8 @@ class GenerateInitialConcentrations:
         makes a dictionary of blank concentrations
         returns a dictionary of compounds with 0 concentration
         """
-        compounds = [node for node in self.graph.nodes() if isinstance(node, str)]
+        compounds = [node for node in self.graph.nodes()
+                     if isinstance(node, str)]
         ic = {c: 0 for c in compounds}
         if not include_co2:
             ic["CO2"] = 1
