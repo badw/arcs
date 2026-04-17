@@ -13,13 +13,15 @@ import re
 from collections import defaultdict
 from monty.serialization import loadfn
 import warnings
+from deprecated import deprecated
 
 
 def get_compound_directory(base, compound, size):
     return os.path.join(base, compound, size)
 
 
-def parse_molecule(formula: str) -> dict:
+@deprecated
+def _parse_molecule(formula: str) -> dict:
     """
     parses a molecule string i.e. 'H2O' into a dictionary broken down into elemental counts
     i.e. {'H':2,'O':1}
@@ -40,6 +42,43 @@ def parse_molecule(formula: str) -> dict:
         atom_count[element] += count
 
     return dict(atom_count)
+
+
+def parse_molecule(formula: str) -> dict:
+    """
+    parses a molecule string i.e. 'H2O' into a dictionary broken down into elemental counts
+    i.e. {'H':2,'O':1}
+    for more complex compounds like (CH3)2CHCH2NH2
+    this should be represented as "CH3_2_CHCH2NH2"
+    taken with permission from https://github.com/badw/reactit.git
+    """
+    parts = [p for p in re.split(r'_(\d+)_?', formula) if p]
+    total_counts = defaultdict(int)
+    last_group_counts = defaultdict(int)
+
+    i = 0
+    while i < len(parts):
+        token = parts[i]
+
+        if token.isdigit():
+            multiplier = int(token)
+            for elem, count in last_group_counts.items():
+                total_counts[elem] += count * (multiplier - 1)
+            last_group_counts = defaultdict(int)
+        else:
+            current_group_counts = defaultdict(int)
+            elements = re.findall(r"([A-Z][a-z]?)(\d*)", token)
+
+            for elem, count in elements:
+                c = int(count) if count else 1
+                total_counts[elem] += c
+                current_group_counts[elem] += c
+
+            last_group_counts = current_group_counts
+
+        i += 1
+
+    return dict(total_counts)
 
 
 class GetEnergyandVibrationsAseCalc:
@@ -463,6 +502,8 @@ class ReactionGibbsandEquilibrium:
         self.gibbs_warnings = {}
         self.log_K = log_K
 
+        warnings.filterwarnings("ignore", category=RuntimeWarning)
+
     @staticmethod
     def Gibbs(
         dft_dict: dict,
@@ -528,15 +569,6 @@ class ReactionGibbsandEquilibrium:
                     self.gibbs_warnings[compound] = {
                         "warning": str(w[0].message)}
 
-        #        gibbs = {
-        #            compound: self.Gibbs(
-        #                dft_dict=self.reaction_input[compound],
-        #                temperature=temperature,
-        #                pressure=pressure,
-        #            )
-        #            for compound in reaction_compounds
-        #        }
-
         prod_sum = np.sum(
             [
                 gibbs[compound] * products[compound]
@@ -576,6 +608,7 @@ class ReactionGibbsandEquilibrium:
         reaction,
         temperature: float,  # in K
         pressure: float,  # in bar
+        filter_large_gibbs: bool = True
     ) -> dict:
         """
         given a reaction dictionary object (from reactit), the function generates a dictionary with both gibbs free energy and equilibrium constant
@@ -607,12 +640,13 @@ class ReactionGibbsandEquilibrium:
         equilibrium_constant = self.equilibrium_constant(
             gibbs_free_energy=gibbs_free_energy, temperature=temperature, log_K=self.log_K
         )
-        if equilibrium_constant == np.inf:
-            warnings.warn(
-                f"{reaction['reaction_string']} has K={equilibrium_constant}")
-        elif equilibrium_constant == float(0):
-            warnings.warn(
-                f"{reaction['reaction_string']} has K={equilibrium_constant}")
+        if not filter_large_gibbs:
+            if equilibrium_constant == np.inf:
+                warnings.warn(
+                    f"{reaction['reaction_string']} has K={equilibrium_constant}")
+            elif equilibrium_constant == float(0):
+                warnings.warn(
+                    f"{reaction['reaction_string']} has K={equilibrium_constant}")
 
         return {"g": gibbs_free_energy, "log_k": equilibrium_constant} if self.log_K else {"g": gibbs_free_energy, "k": equilibrium_constant}
 
@@ -626,6 +660,7 @@ class GraphGenerator:
         """
         GraphGenerator
         """
+        self.gibbs_filter = 709  # eV
         # self.applied_reactions = applied_reactions
 
     def cost_function(
@@ -733,7 +768,8 @@ class GraphGenerator:
         temperature: float,  # in K
         pressure: float,  # in bar
         max_reaction_length: int = 5,
-        log_K: bool = False
+        log_K: bool = False,
+        filter_large_gibbs: bool = True
     ) -> nx.MultiDiGraph:
         """
             generates a networkx.multidigraph from a .json file of reactions and dft_dict generated with reactit and GetEnergyandVibrationsVASP
@@ -768,10 +804,14 @@ class GraphGenerator:
                 <= max_reaction_length
             ):
                 g_k_dict = rge.get_reaction_gibbs_and_equilibrium(
-                    reaction=reaction, temperature=temperature, pressure=pressure
+                    reaction=reaction, temperature=temperature, pressure=pressure, filter_large_gibbs=filter_large_gibbs
                 )
                 g_k_dict["r"] = reaction
-                applied_reactions.append(g_k_dict)
+                if filter_large_gibbs:
+                    if np.abs(g_k_dict["g"]) <= self.gibbs_filter:
+                        applied_reactions.append(g_k_dict)
+                else:
+                    applied_reactions.append(g_k_dict)
 
         graph = self.generate_multidigraph(
             applied_reactions=applied_reactions, temperature=temperature, log_K=log_K
@@ -781,11 +821,12 @@ class GraphGenerator:
 
     def from_dict(
         self,
-        dft_dict: str,
+        quantum_dict: str,
         temperature: float,  # in K
         pressure: float,  # in bar
         max_reaction_length: int = 5,
-        log_K: bool = False
+        log_K: bool = False,
+        filter_large_gibbs: bool = True
     ) -> nx.MultiDiGraph:
         """
             generates a networkx.multidigraph from a dict representation of the .json file of reactions and dft_dict generated with reactit and GetEnergyandVibrationsVASP
@@ -811,18 +852,22 @@ class GraphGenerator:
 
             reactions can be generated with https://github.com/badw/reactit.git
         """
-        rge = ReactionGibbsandEquilibrium(dft_dict, log_K=log_K)
+        rge = ReactionGibbsandEquilibrium(quantum_dict, log_K=log_K)
         applied_reactions = []
-        for reaction in dft_dict["reactions"].values():
+        for reaction in quantum_dict["reactions"].values():
             if (
                 len(reaction["reactants"]) + len(reaction["products"])
                 <= max_reaction_length
             ):
                 g_k_dict = rge.get_reaction_gibbs_and_equilibrium(
-                    reaction=reaction, temperature=temperature, pressure=pressure
+                    reaction=reaction, temperature=temperature, pressure=pressure, filter_large_gibbs=filter_large_gibbs
                 )
                 g_k_dict["r"] = reaction
-                applied_reactions.append(g_k_dict)
+                if filter_large_gibbs:
+                    if np.abs(g_k_dict["g"]) <= self.gibbs_filter:
+                        applied_reactions.append(g_k_dict)
+                else:
+                    applied_reactions.append(g_k_dict)
 
         graph = self.generate_multidigraph(
             applied_reactions=applied_reactions, temperature=temperature

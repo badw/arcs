@@ -315,71 +315,98 @@ class Traversal:
         except Exception:
             return None
 
+    # @staticmethod
+    # def equilibrium_quotient():
+
+    # def update_concentrations(x):
+
+    # def sanity_check():
+
     @staticmethod
+    def eq_obj_log(x, reactants, products, log_K, concs):
+        current_concs = copy.deepcopy(concs)
+        for sp, coeff in reactants.items():
+            current_concs[sp] = concs[sp] - (coeff * x)
+
+        for sp, coeff in products.items():
+            current_concs[sp] = concs[sp] + (coeff * x)
+
+        if any(val <= 0 for val in current_concs.values()):
+            return 1e10  # if negative concentrations error out with a large value
+
+        log_q_num = sum(
+            coeff * np.log10(current_concs[sp]) for sp, coeff in products.items()
+        )
+        log_q_den = sum(
+            coeff * np.log10(current_concs[sp]) for sp, coeff in reactants.items()
+        )
+        log_q = log_q_num - log_q_den
+
+        return log_q - log_K  # Target: log(Q) - log(K) = 0
+
+    @staticmethod
+    def eq_obj(x, reactants, products, K, concs):
+        """
+        equilibrium objective for fsolve for non log(K) values 
+        """
+        current_concs = copy.deepcopy(concs)
+        for sp, coeff in reactants.items():
+            current_concs[sp] = concs.get(
+                sp, 0) - (coeff * x)
+        for sp, coeff in products.items():
+            current_concs[sp] = concs.get(
+                sp, 0) + (coeff * x)
+
+        if any(val <= 0 for val in current_concs.values()):
+            return 1e10  # this should be for "sane"
+
+        num = np.prod([current_concs[sp]**coeff for sp,
+                       coeff in products.items()])
+        den = np.prod([current_concs[sp]**coeff for sp,
+                       coeff in reactants.items()])
+        return (num / den) - K
+
     def arcs_equilibrium_concentrations(
+        self,
         concentrations: dict,
         node_data: dict,
+        debug: bool = False,
     ):
         """
-        attempt at own version of equilibrium_concentrations bypassing chempy
-        """
+            attempt at own version of equilibrium_concentrations bypassing chempy
+            """
         warnings.simplefilter("ignore")
         _concs = copy.deepcopy(concentrations)
 
         reactants = node_data["reaction"]["reactants"]
         products = node_data["reaction"]["products"]
+        K = node_data["equilibrium_constant"]
 
-        try:
-            K = node_data["equilibrium_constant"]
-            log_K = False
-        except KeyError:  # attribute error?
-            K = node_data["log_equilibrium_constant"]
-            log_K = True
-        # K = node_data["equilibrium_constant"] if not log_K else node_data["log_equilibrium_constant"]
+        # testing for brentq:
+        stoichs = []
+        for r in reactants.values():
+            stoichs.append(r*-1)
 
-        def equilibrium_objective(x, log_k):
-            current_concs = {}
-            for sp, coeff in reactants.items():
-                current_concs[sp] = _concs.get(
-                    sp, 0) - (coeff * x)
-            for sp, coeff in products.items():
-                current_concs[sp] = _concs.get(
-                    sp, 0) + (coeff * x)
+        for p in products.values():
+            stoichs.append(p)
 
-            # Physical constraint: Concentrations cannot be negative
-            if any(val <= 0 for val in current_concs.values()):
-                return 1e10
+        x_guess = 0.01
+        x_solution = fsolve(self.eq_obj, x_guess, args=(
+            reactants, products, K, _concs), full_output=True)
 
-            if log_k:
-                # log10(Q) = sum(coeff * log10(products)) - sum(coeff * log10(reactants))
-                log_q_num = sum(
-                    coeff * np.log10(current_concs[sp]) for sp, coeff in products.items())
-                log_q_den = sum(
-                    coeff * np.log10(current_concs[sp]) for sp, coeff in reactants.items())
-                log_q = log_q_num - log_q_den
+        if x_solution[0] == x_guess:
+            return None
 
-                return log_q - K  # Target: log(Q) - log(K) = 0
-            else:
-                # Standard space: Q - K = 0
-                num = np.prod([current_concs[sp]**coeff for sp,
-                              coeff in products.items()])
-                den = np.prod([current_concs[sp]**coeff for sp,
-                              coeff in reactants.items()])
-                return (num / den) - K
-
-        # Solver setup
-        x_guess = 0.01  # small is a good starting point
-        x_solution = fsolve(equilibrium_objective, x_guess, log_K)
         x = x_solution[0]
-
-        # Final Concentration Mapping
 
         for sp, c in reactants.items():
             _concs[sp] = _concs[sp] - (c * x)
         for sp, c in products.items():
             _concs[sp] = _concs[sp]+(c*x)
-
-        return _concs
+        if debug:
+            return _concs, x_solution
+        else:
+            return _concs
 
     def random_walk(
         self,
