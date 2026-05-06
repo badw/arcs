@@ -40,7 +40,8 @@ dependencies = [
         'loguru',#==0.7.2',
         'pywebview',
         'setproctitle',
-        'pytest'
+        'pytest',
+        'deprecated'
 ]
 
 [project.optional-dependencies]
