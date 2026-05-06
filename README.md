@@ -32,7 +32,7 @@ an `quantum data` from coupled cluster calculations is found here:
 
 `./app/data/quantum_data.json.gz`
 
-(calculation details can be found at [src/data/README.md](`src/data/README.md`))
+(calculation details can be found at [src/data/README.md](src/data/README.md))
 
 
 simple usage: 
