@@ -14,13 +14,13 @@ COPY . .
 # Install the Python package using setup.py
 RUN pip install .
 
-# Expose any necessary ports (if your application needs it, e.g., for Dash)
-EXPOSE 8050
-
-USER 1001
-
-WORKDIR /workspace/app
-
-# Run the application (replace this with your application command)
-ENV HOST=0.0.0.0
-CMD ["python", "arcs_app.py"]
+## Expose any necessary ports (if your application needs it, e.g., for Dash)
+#EXPOSE 8050
+#
+#USER 1001
+#
+#WORKDIR /workspace/app
+#
+## Run the application (replace this with your application command)
+#ENV HOST=0.0.0.0
+#CMD ["python", "arcs_app.py"]

@@ -511,7 +511,6 @@ class Traversal:
         multiprocessed with ncpus DEFAULT = 4
         """
         self.__dict__.update(kws)
-
         self.initial_concentrations = initial_concentrations
 
         data = tqdm_pathos.map(

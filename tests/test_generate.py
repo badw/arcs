@@ -1,5 +1,4 @@
 from csv import Error
-from re import A
 import numpy as np 
 import json 
 from monty.serialization import loadfn
@@ -272,7 +271,7 @@ def test_all_random():
     
     try:
         gic.all_random()
-    except Exception as e:
+    except Exception:
         raise(Error)
     
 def test_all_zero():
