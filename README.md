@@ -28,11 +28,11 @@ an example Jupyter Notebook can be found here:
 
 `./examples/example.ipynb`
 
-an example DFT data is found here: 
+an `quantum data` from coupled cluster calculations is found here: 
 
-`./app/data/dft_data.json`
+`./app/data/quantum_data.json.gz`
 
-which was run using VASP and the SCAN meta-GGA functional. 
+(calculation details can be found at `src/data/README.md`)
 
 
 simple usage: 
@@ -42,11 +42,12 @@ from arcs.generate import GraphGenerator
 from arcs.traversal import Traversal
 from arcs.generate import GenerateInitialConcentrations
 
-graph = GraphGenerator().from_file(
-    filename='../app/data/dft_data.json',
+gg = GraphGenerator()
+graph = gg.from_file(
+    filename='../app/data/quantum_data.json.gz',
     temperature=248,
     pressure=20,
-    max_reaction_length=5
+    max_reaction_length=4
 )
 
 concentrations = GenerateInitialConcentrations(graph=graph).update_ic(
