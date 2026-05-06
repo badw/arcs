@@ -105,21 +105,11 @@ average_data.round(2)
 >.
 >```
 
-### ARCS App 
+### ARCS Dash Interface  
 
-The app is created using the `plotly DASH` ([https://github.com/plotly/dash](https://github.com/plotly/dash)) framework.  
-
-The `arcs-app` can be run from the `app` directory in the terminal through; 
-
-```
-cd app
-python arcs-app.py
-```
+A  `plotly DASH` ([https://github.com/plotly/dash](https://github.com/plotly/dash)) interface is available at [https://github.com/badw/arcs-dash.git](https://github.com/badw/arcs-dash.git) 
 
 
-<p align="center">
- <img src="./static/ARCS-gui.png" height="300">
-</p>
 
 
 ### Credits

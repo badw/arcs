@@ -20,3 +20,9 @@ ARCS 1.5.0
 - much faster
 - code readability much better
 - added tests for this class
+
+`arcs-dash-app 
+- removed dash app to https://github.com/badw/arcs-dash.git
+- hashed out relevant lines in the Dockerfile
+
+

@@ -1,12 +1,8 @@
-from thermochem.janaf import Janafdb
 from thermochem.burcat import Elementdb
 from collections import defaultdict
 import numpy as np
 from scipy.constants import physical_constants
 import pandas as pd
-import matplotlib.pyplot as plt
-from monty.serialization import loadfn, dumpfn
-import tqdm
 from arcs.generate import parse_molecule
 from collections import Counter
 
