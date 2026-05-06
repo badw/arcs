@@ -2,4 +2,5 @@
 **/arcs.egg-info
 **/.DS_Store
 **/.ipynb_checkpoints
+**/lib
 build
