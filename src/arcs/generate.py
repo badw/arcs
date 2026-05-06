@@ -21,7 +21,7 @@ def get_compound_directory(base, compound, size):
 
 
 @deprecated
-def _parse_molecule(formula: str) -> dict:
+def parse_molecule_DEPRECATED(formula: str) -> dict:
     """
     parses a molecule string i.e. 'H2O' into a dictionary broken down into elemental counts
     i.e. {'H':2,'O':1}

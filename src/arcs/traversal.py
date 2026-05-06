@@ -315,104 +315,10 @@ class Traversal:
         except Exception:
             return None
 
-    # @staticmethod
-    # def equilibrium_quotient():
-
-    # def update_concentrations(x):
-
-    # def sanity_check():
-
-    @staticmethod
-    def eq_obj_log(x, reactants, products, log_K, concs):
-        current_concs = copy.deepcopy(concs)
-        for sp, coeff in reactants.items():
-            current_concs[sp] = concs[sp] - (coeff * x)
-
-        for sp, coeff in products.items():
-            current_concs[sp] = concs[sp] + (coeff * x)
-
-        if any(val <= 0 for val in current_concs.values()):
-            return 1e10  # if negative concentrations error out with a large value
-
-        log_q_num = sum(
-            coeff * np.log10(current_concs[sp]) for sp, coeff in products.items()
-        )
-        log_q_den = sum(
-            coeff * np.log10(current_concs[sp]) for sp, coeff in reactants.items()
-        )
-        log_q = log_q_num - log_q_den
-
-        return log_q - log_K  # Target: log(Q) - log(K) = 0
-
-    @staticmethod
-    def eq_obj(x, reactants, products, K, concs):
-        """
-        equilibrium objective for fsolve for non log(K) values 
-        """
-        current_concs = copy.deepcopy(concs)
-        for sp, coeff in reactants.items():
-            current_concs[sp] = concs.get(
-                sp, 0) - (coeff * x)
-        for sp, coeff in products.items():
-            current_concs[sp] = concs.get(
-                sp, 0) + (coeff * x)
-
-        if any(val <= 0 for val in current_concs.values()):
-            return 1e10  # this should be for "sane"
-
-        num = np.prod([current_concs[sp]**coeff for sp,
-                       coeff in products.items()])
-        den = np.prod([current_concs[sp]**coeff for sp,
-                       coeff in reactants.items()])
-        return (num / den) - K
-
-    def arcs_equilibrium_concentrations(
-        self,
-        concentrations: dict,
-        node_data: dict,
-        debug: bool = False,
-    ):
-        """
-            attempt at own version of equilibrium_concentrations bypassing chempy
-            """
-        warnings.simplefilter("ignore")
-        _concs = copy.deepcopy(concentrations)
-
-        reactants = node_data["reaction"]["reactants"]
-        products = node_data["reaction"]["products"]
-        K = node_data["equilibrium_constant"]
-
-        # testing for brentq:
-        stoichs = []
-        for r in reactants.values():
-            stoichs.append(r*-1)
-
-        for p in products.values():
-            stoichs.append(p)
-
-        x_guess = 0.01
-        x_solution = fsolve(self.eq_obj, x_guess, args=(
-            reactants, products, K, _concs), full_output=True)
-
-        if x_solution[0] == x_guess:
-            return None
-
-        x = x_solution[0]
-
-        for sp, c in reactants.items():
-            _concs[sp] = _concs[sp] - (c * x)
-        for sp, c in products.items():
-            _concs[sp] = _concs[sp]+(c*x)
-        if debug:
-            return _concs, x_solution
-        else:
-            return _concs
-
     def random_walk(
         self,
         initial_concentrations: dict,
         chempy_sane=True,  # typically for very large
-        use_chempy=True,
         ** kws,
     ) -> dict:
         """
@@ -455,20 +361,16 @@ class Traversal:
             chosen_reaction_index = self.choose_reaction(
                 ranked_reactions=ranked_reactions
             )
-            if use_chempy:
-                # 5 generate a chempy eqsystem
-                eqsystem = self.generate_chempy_eqsystem(
-                    index=chosen_reaction_index)
+            # 5 generate a chempy eqsystem
+            eqsystem = self.generate_chempy_eqsystem(
+                index=chosen_reaction_index)
 
             # 6 get equilibrium_concentrations and update relevant dictionaries.
-                final_concentrations = self.chempy_equilibrium_concentrations(
-                    concentrations=_concentrations,
-                    equilibrium_reaction=eqsystem,
-                    chempy_sane=chempy_sane,
-                )
-            else:
-                final_concentrations = self.arcs_equilibrium_concentrations(
-                    node_data=self.graph.nodes[chosen_reaction_index], concentrations=_concentrations)
+            final_concentrations = self.chempy_equilibrium_concentrations(
+                concentrations=_concentrations,
+                equilibrium_reaction=eqsystem,
+                chempy_sane=chempy_sane,
+            )
 
             if final_concentrations:
                 i += 1
