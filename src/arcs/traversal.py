@@ -28,7 +28,7 @@ class Traversal:
         self.shortest_path_method = "Djikstra"
         self.__dict__.update(kws)
 
-    def length_multiplier(self, candidate_reaction: int = None, **kws) -> float:
+    def length_multiplier(self, candidate_reaction: int, **kws) -> float:
         """
         given a candidate reaction,
 
@@ -133,7 +133,7 @@ class Traversal:
 
         concs = copy.deepcopy(concentrations)
 
-        if self.exclude_co2:
+        if self.exclude_co2 and "CO2" in concs:
             # CO2 will always be too large as it is the background
             del concs["CO2"]
 
@@ -169,7 +169,7 @@ class Traversal:
                 pass
         return list(choices)[0: np.random.randint(2, self.max_compounds)]
 
-    def get_weighted_reaction_rankings(self, weighted_random_compounds: list, **kws):
+    def get_weighted_reaction_rankings(self, weighted_random_compounds: list, **kws) -> dict:
         """
         returns a dictionary of {<reaction_index>:<weighting>} given a list of weighted_random_compounds from self.get_weighted_random_compounds (needs at least 2 to give a result)
 
@@ -290,7 +290,7 @@ class Traversal:
     def chempy_equilibrium_concentrations(
         concentrations: dict,
         equilibrium_reaction: EqSystem,
-        chempy_sane=False,
+        chempy_sane=True,
     ) -> dict:
         """
         generate equilibrium concentrations
