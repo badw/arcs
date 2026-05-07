@@ -59,7 +59,8 @@ class AnalyseSampling:
 
         return "".join([rs, " = ", ps])
 
-    def sci_notation(self, number, sig_fig=2):
+    @staticmethod
+    def sci_notation(number, sig_fig=2):
         ret_string = "{0:.{1:d}e}".format(number, sig_fig)
         a, b = ret_string.split("e")
         # remove leading "+" and strip leading zeros
@@ -91,10 +92,7 @@ class AnalyseSampling:
     #        return(d)
     @staticmethod
     def flip_reaction(reaction_data):
-        try:
-            k = reaction_data["equilibrium_constant"]
-        except KeyError:
-            k = reaction_data["log_equilibrium_constant"]
+        k = reaction_data["equilibrium_constant"]
         reaction_string = reaction_data["reaction"]["reaction_string"]
         reactants = reaction_data["reaction"]["reactants"]
         products = reaction_data["reaction"]["products"]
@@ -148,7 +146,7 @@ class AnalyseSampling:
         average_data = {0: None, 1: []}
         for sample in data:
             for i, concentrations in sample["concentrations"].items():
-                if i == 0:
+                if int(i) == 0:
                     average_data[0] = concentrations
                 else:
                     average_data[1].append(concentrations)
@@ -168,7 +166,7 @@ class AnalyseSampling:
     def count_path_length(
         data: dict,
     ) -> dict:
-        return dict(Counter([len(x["concentrations"]) for x in data[1:]]))
+        return dict(Counter([len(x["concentrations"]) for x in data[0:]]))
 
     @staticmethod
     def reduce_data_by_minimum_path_length(
