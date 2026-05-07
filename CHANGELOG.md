@@ -1,11 +1,10 @@
-ARCS 1.5.0 
+ARCS 1.5.1 
 
 `setup_functions.py`
 
 - removed ApplyDataToReactions as this class was now defunct 
 
 `ReactionGibbsandEquilibrium`
-- removed a lot of chempy dependency to make it faster 
 - implemented reactit output which is more pythonic and faster 
 - docstrings added 
 - code readability now much better 
@@ -21,8 +20,20 @@ ARCS 1.5.0
 - code readability much better
 - added tests for this class
 
-`arcs-dash-app 
+`errors.py` 
+-this is a module that will can calculate errors based on the supplied quantum calculated data - currently not used or implemented in arcs (work-in-progress)
+
+`arcs-dash-app` 
 - removed dash app to https://github.com/badw/arcs-dash.git
-- hashed out relevant lines in the Dockerfile
+
+`Coupled Cluster Data` 
+- now more compounds have been added to the backend data - the total list currently available are shown in `src/arcs/data/README.md` 
+
+`pytests`
+- tests for `analysis.py` and `traversal.py` have now been added
+
+
+
+
 
 
