@@ -51,9 +51,12 @@ dev = ["pytest>=7.4.0", "pytest-cov>=3.0.0"]
 repository = "https://github.com/badw/arcs.git"
 changelog = "https://github.com/badw/arcs/tree/main/CHANGELOG.md"
 
+[tool.setuptools]
+packages = { find = { where = ["src"] } } 
+
 [tool.setuptools.package-data]
 template = ["py.typed"]
-arcs = ["data/*.json"]
+arcs = ["data/*.json.gz"]
 
 [tool.pyright]
 include = ["arcs"]
