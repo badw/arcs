@@ -15,7 +15,8 @@ import pytest
 # GetEnergyandVibrationsVASP
 def test_parse_molecule():
     assert parse_molecule("H2O") == {'H': 2, 'O': 1}
-    assert parse_molecule("(CH3_2CHCH2NH2") == {'C': 4, 'H': 11, 'N': 1} 
+    assert parse_molecule("(CH3_2CHCH2NH2") == {'C': 4, 'H': 11, 'N': 1}
+
 
 def test_get_initial_magnetic_moments():
     gevv = GetEnergyandVibrationsVASP(

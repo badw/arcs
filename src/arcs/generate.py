@@ -91,7 +91,7 @@ class GetEnergyandVibrationsAseCalc:
         self.get_atoms()
 
     @staticmethod
-    def get_initial_magnetic_moments(aseatoms: ase.Atoms) -> list:
+    def get_initial_magnetic_moments(aseatoms: Atoms) -> list:
         magmoms = []
         for atomic_number in aseatoms.get_atomic_numbers():
             magmoms.append([0 if atomic_number % 2 == 0 else 1][0])

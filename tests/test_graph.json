@@ -1,0 +1,489 @@
+{
+  "H2O": {
+    "atoms": {
+      "numbers": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "int64",
+        "data": [
+          8,
+          1,
+          1
+        ]
+      },
+      "positions": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "float64",
+        "data": [
+          [
+            0.9326800408241865,
+            0.05880492792326062,
+            0.08158656589560961
+          ],
+          [
+            1.9005678922579161,
+            0.057069633585359957,
+            0.03520145622570945
+          ],
+          [
+            0.6538172234906712,
+            0.02411190663405809,
+            -0.8457717283904623
+          ]
+        ]
+      },
+      "initial_magmoms": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "float64",
+        "data": [
+          0.0,
+          1.0,
+          1.0
+        ]
+      },
+      "cell": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "float64",
+        "data": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ]
+      },
+      "pbc": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "bool",
+        "data": [
+          false,
+          false,
+          false
+        ]
+      }
+    },
+    "pointgroup": "C2v",
+    "spin": 0,
+    "rotation_num": 2,
+    "islinear": "nonlinear",
+    "energy": -2074.603867919969,
+    "vibrations": {
+      "@module": "numpy",
+      "@class": "array",
+      "dtype": "complex128",
+      "data": [
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.336828902062832e-10,
+          1.5418348166667254e-09,
+          3.196911534077841e-09,
+          0.21049486277615656,
+          0.4772523115085782,
+          0.49022737761482155
+        ],
+        [
+          7.304179110390485e-09,
+          4.179692411016849e-09,
+          1.3810762276914465e-10,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ]
+    },
+    "SMILES": "O"
+  },
+  "O2": {
+    "atoms": {
+      "numbers": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "int64",
+        "data": [
+          8,
+          8
+        ]
+      },
+      "positions": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "float64",
+        "data": [
+          [
+            0.974072292987114,
+            0.09283608203040747,
+            0.028061596578707083
+          ],
+          [
+            2.2560722932024246,
+            0.09283608203040747,
+            0.028061596578707083
+          ]
+        ]
+      },
+      "initial_magmoms": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "float64",
+        "data": [
+          0.0,
+          0.0
+        ]
+      },
+      "cell": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "float64",
+        "data": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ]
+      },
+      "pbc": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "bool",
+        "data": [
+          false,
+          false,
+          false
+        ]
+      }
+    },
+    "pointgroup": "D*h",
+    "spin": 1,
+    "rotation_num": 2,
+    "islinear": "linear",
+    "energy": -4079.703230440319,
+    "vibrations": {
+      "@module": "numpy",
+      "@class": "array",
+      "dtype": "complex128",
+      "data": [
+        [
+          0.0,
+          0.0,
+          1.2586423277549435e-19,
+          1.6010175023255222e-19,
+          1.5326851708921552e-09,
+          0.19510788334830031
+        ],
+        [
+          2.3495132794242895e-09,
+          9.894832330206e-20,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ]
+    },
+    "SMILES": "O=O"
+  },
+  "H2": {
+    "atoms": {
+      "numbers": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "int64",
+        "data": [
+          1,
+          1
+        ]
+      },
+      "positions": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "float64",
+        "data": [
+          [
+            0.9611576415240015,
+            -0.07827360111354853,
+            -0.04862627434565727
+          ],
+          [
+            1.5501576415240015,
+            -0.07827360111354853,
+            -0.04862627434565727
+          ]
+        ]
+      },
+      "initial_magmoms": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "float64",
+        "data": [
+          1.0,
+          1.0
+        ]
+      },
+      "cell": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "float64",
+        "data": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ]
+      },
+      "pbc": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "bool",
+        "data": [
+          false,
+          false,
+          false
+        ]
+      }
+    },
+    "pointgroup": "D*h",
+    "spin": 0,
+    "rotation_num": 2,
+    "islinear": "linear",
+    "energy": -31.665154648301918,
+    "vibrations": {
+      "@module": "numpy",
+      "@class": "array",
+      "dtype": "complex128",
+      "data": [
+        [
+          0.0,
+          0.0,
+          3.692528734849162e-27,
+          4.1186016534916475e-27,
+          4.0491431283962374e-09,
+          0.5434667910401553
+        ],
+        [
+          9.661588390421834e-19,
+          3.220529463024004e-19,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ]
+    },
+    "SMILES": "[HH]"
+  },
+  "H2O2": {
+    "atoms": {
+      "numbers": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "int64",
+        "data": [
+          8,
+          8,
+          1,
+          1
+        ]
+      },
+      "positions": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "float64",
+        "data": [
+          [
+            0.837385114536204,
+            -0.0009332785185559764,
+            -0.04649570324086307
+          ],
+          [
+            2.285540377295274,
+            -0.01801672429841093,
+            0.07482476293884824
+          ],
+          [
+            0.644261435721089,
+            -0.13435783067327245,
+            0.901037310638427
+          ],
+          [
+            2.478664056110389,
+            0.11540782785630548,
+            -0.8727082509404418
+          ]
+        ]
+      },
+      "initial_magmoms": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "float64",
+        "data": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ]
+      },
+      "cell": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "float64",
+        "data": [
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0
+          ]
+        ]
+      },
+      "pbc": {
+        "@module": "numpy",
+        "@class": "array",
+        "dtype": "bool",
+        "data": [
+          false,
+          false,
+          false
+        ]
+      }
+    },
+    "pointgroup": "C2h",
+    "spin": 0,
+    "rotation_num": 2,
+    "islinear": "nonlinear",
+    "energy": -4114.016523794663,
+    "vibrations": {
+      "@module": "numpy",
+      "@class": "array",
+      "dtype": "complex128",
+      "data": [
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          7.675368568917052e-10,
+          4.285204019829714e-09,
+          7.609800599241021e-09,
+          0.11418737449570514,
+          0.15492555356143395,
+          0.19194415402994555,
+          0.4763731334381128,
+          0.47722166265616656
+        ],
+        [
+          0.032682156216695894,
+          4.267463472162498e-09,
+          2.341397505595489e-09,
+          1.1462953164153362e-09,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ]
+    },
+    "SMILES": "OO"
+  },
+  "metadata": {
+    "code": "PSI4",
+    "version": "1.9.1",
+    "method": "ccsd",
+    "basis": "cc-pvdz"
+  },
+  "reactions": {
+    "0": {
+      "reaction_string": "2 H2 + 1 O2 = 2 H2O",
+      "reactants": {
+        "H2": 2,
+        "O2": 1
+      },
+      "products": {
+        "H2O": 2
+      }
+    },
+    "1": {
+      "reaction_string": "1 H2 + 1 O2 = 1 H2O2",
+      "reactants": {
+        "H2": 1,
+        "O2": 1
+      },
+      "products": {
+        "H2O2": 1
+      }
+    },
+    "2": {
+      "reaction_string": "1 H2 + 1 H2O2 = 2 H2O",
+      "reactants": {
+        "H2": 1,
+        "H2O2": 1
+      },
+      "products": {
+        "H2O": 2
+      }
+    },
+    "3": {
+      "reaction_string": "1 O2 + 2 H2O = 2 H2O2",
+      "reactants": {
+        "O2": 1,
+        "H2O": 2
+      },
+      "products": {
+        "H2O2": 2
+      }
+    }
+  }
+}

@@ -1,6 +1,5 @@
 from arcs.analysis import AnalyseSampling
 import pytest
-import numpy as np
 from monty.serialization import loadfn
 
 
