@@ -152,10 +152,16 @@ class Traversal:
         # remake the probabilities
         p_3 = {k: v / sum(p_2.values()) for k, v in p_2.items()}
         # make a list of choices based upon the probabilities
+        # orig:
         available = list(
             np.random.choice(a=list(p_3), size=len(
                 concs) * 10, p=list(p_3.values()))
         )
+        # experimental:
+        # available = list(
+        #    np.random.choice(a=list(p_3), size=len(
+        #        p_3), replace=False, p=list(p_3.values()))
+        # )
         #  now make a list max_compounds long of random choices based on available
         choices = {}
         for i in range(self.max_compounds):

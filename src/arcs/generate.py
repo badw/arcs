@@ -14,6 +14,7 @@ from collections import defaultdict
 from monty.serialization import loadfn
 import warnings
 from deprecated import deprecated
+import pandas as pd
 
 
 def get_compound_directory(base, compound, size):
@@ -640,6 +641,10 @@ class ReactionGibbsandEquilibrium:
         equilibrium_constant = self.equilibrium_constant(
             gibbs_free_energy=gibbs_free_energy, temperature=temperature, log_K=self.log_K
         )
+        # for the table - experimental
+        equilibrium_constant_rev = self.equilibrium_constant(
+            gibbs_free_energy=-gibbs_free_energy, temperature=temperature, log_K=self.log_K
+        )
         if not filter_large_gibbs:
             if equilibrium_constant == np.inf:
                 warnings.warn(
@@ -648,7 +653,7 @@ class ReactionGibbsandEquilibrium:
                 warnings.warn(
                     f"{reaction['reaction_string']} has K={equilibrium_constant}")
 
-        return {"g": gibbs_free_energy, "log_k": equilibrium_constant} if self.log_K else {"g": gibbs_free_energy, "k": equilibrium_constant}
+        return {"g": gibbs_free_energy, "log_k": equilibrium_constant} if self.log_K else {"g": gibbs_free_energy, "k": equilibrium_constant, "g_rev": -gibbs_free_energy, "k_rev": equilibrium_constant_rev}
 
 
 class GraphGenerator:
@@ -763,6 +768,45 @@ class GraphGenerator:
 
         return graph
 
+    def generate_table(
+        self,
+        temperature: float,  # in K
+        applied_reactions: list,
+        log_K: bool = False,
+    ) -> pd.DataFrame:
+        """
+        This function generates reaction graph in networkx weighted using the self.costfunction
+        returns an nx.multidigraph object
+        """
+
+        table = defaultdict(dict)
+
+        for i, reaction in enumerate(applied_reactions):
+            # forward_cost = self.cost_function(
+            #    gibbs_free_energy=reaction["g"],
+            #    temperature=temperature,
+            #    reactants=reaction["r"]["reactants"],
+            # )
+            # backward_cost = self.cost_function(
+            #    gibbs_free_energy=-reaction["g"],
+            #    temperature=temperature,
+            #    reactants=reaction["r"]["products"],
+            # )
+
+            table[i] = {
+                "reactants": reaction["r"]["reactants"],
+                "products": reaction["r"]["products"],
+                # "forward_cost": forward_cost,
+                # "backward_cost": backward_cost,
+                "K": reaction["k"],
+                "G": reaction["g"],
+                "G_rev": reaction["g_rev"],
+                "K_rev": reaction["k_rev"],
+                "rstring": reaction["r"]["reaction_string"]
+            }
+
+        return table
+
     def from_file(
         self,
         filename: str,
@@ -770,7 +814,8 @@ class GraphGenerator:
         pressure: float,  # in bar
         max_reaction_length: int = 5,
         log_K: bool = False,
-        filter_large_gibbs: bool = True
+        filter_large_gibbs: bool = True,
+        graph=True
     ) -> nx.MultiDiGraph:
         """
             generates a networkx.multidigraph from a .json file of reactions and quantum_dict generated with reactit and GetEnergyandVibrationsVASP
@@ -823,10 +868,13 @@ class GraphGenerator:
                         applied_reactions.append(g_k_dict)
                 else:
                     applied_reactions.append(g_k_dict)
-
-        graph = self.generate_multidigraph(
-            applied_reactions=applied_reactions, temperature=temperature, log_K=log_K
-        )
+        if graph:
+            graph = self.generate_multidigraph(
+                applied_reactions=applied_reactions, temperature=temperature, log_K=log_K
+            )
+        else:
+            graph = self.generate_table(
+                applied_reactions=applied_reactions, temperature=temperature, log_K=log_K)
         rge.raise_warnings()
 
         return graph
