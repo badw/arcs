@@ -1,6 +1,7 @@
 import os
 from ase.io import read
 from ase.units import Hartree
+from pandas import DataFrame
 from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.symmetry.analyzer import PointGroupAnalyzer
 from ase.thermochemistry import IdealGasThermo
@@ -768,6 +769,60 @@ class GraphGenerator:
 
         return graph
 
+    def reformat_table(
+        self,
+        table_dict: dict,
+    ) -> pd.DataFrame:
+        """
+        This function reformats the table_dict to include each compound specie present in ARCS in a way that: 
+        reactants = -ve (used up)
+        products = +ve (generated)
+        i.e. 
+        2 NO + O2 = 2 NO2 
+        | reaction | NO | O2 | NO2 | H2O | etc. | 
+        | ---  | --- | --- | --- | --- | --- | 
+        | 0 | -2 | -1 | +2 | 0 | etc. |     
+
+        This should eventually be combined with generate_table
+        """
+
+        reformatted_dict = defaultdict(dict)
+
+        for i, _dict in table_dict.items():
+            gibbs_free_energy = _dict["G"]
+            # if reaction is already pointing forward
+            if gibbs_free_energy < 0:
+                reactants = _dict["reactants"]
+                products = _dict["products"]
+                reformatted_dict[i]["K"] = _dict["K"]
+                reformatted_dict[i]["G"] = _dict["G"]
+                # reformatted_dict[i]["G_rev"] = _dict["G_rev"]
+                # reformatted_dict[i]["K_rev"] = _dict["K_rev"]
+                for compound, num in reactants.items():
+                    reformatted_dict[i][compound] = - \
+                        num  # -ve as being removed
+                for compound, num in products.items():
+                    reformatted_dict[i][compound] = num  #  +ve as being made
+            else:  # if reaction is facing backwards...
+                reactants = _dict["products"]
+                products = _dict["reactants"]
+                reformatted_dict[i]["K"] = _dict["K_rev"]
+                reformatted_dict[i]["G"] = _dict["G_rev"]
+                # reformatted_dict[i]["G_rev"] = _dict["G"]
+                # reformatted_dict[i]["K_rev"] = _dict["K"]
+                for compound, num in reactants.items():
+                    reformatted_dict[i][compound] = - \
+                        num  # -ve as being removed
+                for compound, num in products.items():
+                    reformatted_dict[i][compound] = num  #  +ve as being made
+
+        df = pd.DataFrame(reformatted_dict).fillna(0).T
+        column_species = list(df.columns)
+        for spec in self.compound_reference:
+            if spec not in column_species:
+                df[spec] = [0 for x in df.index]
+        return df
+
     def generate_table(
         self,
         temperature: float,  # in K
@@ -779,21 +834,11 @@ class GraphGenerator:
         returns an nx.multidigraph object
         """
 
-        table = defaultdict(dict)
+        table_dict = defaultdict(dict)
 
         for i, reaction in enumerate(applied_reactions):
-            # forward_cost = self.cost_function(
-            #    gibbs_free_energy=reaction["g"],
-            #    temperature=temperature,
-            #    reactants=reaction["r"]["reactants"],
-            # )
-            # backward_cost = self.cost_function(
-            #    gibbs_free_energy=-reaction["g"],
-            #    temperature=temperature,
-            #    reactants=reaction["r"]["products"],
-            # )
 
-            table[i] = {
+            table_dict[i] = {
                 "reactants": reaction["r"]["reactants"],
                 "products": reaction["r"]["products"],
                 # "forward_cost": forward_cost,
@@ -805,7 +850,7 @@ class GraphGenerator:
                 "rstring": reaction["r"]["reaction_string"]
             }
 
-        return table
+        return self.reformat_table(table_dict)
 
     def from_file(
         self,
