@@ -7,6 +7,7 @@ from pymatgen.symmetry.analyzer import PointGroupAnalyzer
 from ase.thermochemistry import IdealGasThermo
 from scipy.constants import Boltzmann, e
 import numpy as np
+from importlib.resources.abc import Traversable
 import networkx as nx
 from ase.atoms import Atoms
 import ase
@@ -854,14 +855,14 @@ class GraphGenerator:
 
     def from_file(
         self,
-        filename: str,
+        filename: str | os.PathLike | Traversable,
         temperature: float,  # in K
         pressure: float,  # in bar
         max_reaction_length: int = 5,
         log_K: bool = False,
         filter_large_gibbs: bool = True,
         graph=True
-    ) -> nx.MultiDiGraph:
+    ) -> nx.MultiDiGraph | pd.DataFrame:
         """
             generates a networkx.multidigraph from a .json file of reactions and quantum_dict generated with reactit and GetEnergyandVibrationsVASP
             needs a sanity check on the file though
