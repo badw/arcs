@@ -797,8 +797,8 @@ class GraphGenerator:
                 products = _dict["products"]
                 reformatted_dict[i]["K"] = _dict["K"]
                 reformatted_dict[i]["G"] = _dict["G"]
-                # reformatted_dict[i]["G_rev"] = _dict["G_rev"]
-                # reformatted_dict[i]["K_rev"] = _dict["K_rev"]
+                reformatted_dict[i]["G_rev"] = _dict["G_rev"]
+                reformatted_dict[i]["K_rev"] = _dict["K_rev"]
                 for compound, num in reactants.items():
                     reformatted_dict[i][compound] = - \
                         num  # -ve as being removed
@@ -809,8 +809,8 @@ class GraphGenerator:
                 products = _dict["reactants"]
                 reformatted_dict[i]["K"] = _dict["K_rev"]
                 reformatted_dict[i]["G"] = _dict["G_rev"]
-                # reformatted_dict[i]["G_rev"] = _dict["G"]
-                # reformatted_dict[i]["K_rev"] = _dict["K"]
+                reformatted_dict[i]["G_rev"] = _dict["G"]
+                reformatted_dict[i]["K_rev"] = _dict["K"]
                 for compound, num in reactants.items():
                     reformatted_dict[i][compound] = - \
                         num  # -ve as being removed
