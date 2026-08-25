@@ -8,10 +8,255 @@ import tqdm_pathos
 import itertools as it
 from arcs.generate import parse_molecule
 from scipy.optimize import fsolve
+import pandas as pd
 
 
-class Traversal:
+class TableTraversal:
+    def __init__(self, table: pd.DataFrame, **kws):
+        '''
+        TableTraversal contains the algorithm that sorts and filters the reaction table currently: 
+        1. Filtering: 
+             * a) filter reactions to show only those with species present in `initial_concentrations` (basic filter)
+
+        2. Sorting: 
+
+             * b) filter based on availability (i.e. prioritise larger concentrations first) 
+
+
+             * c) filter based on stoichiometry (i.e. if you have `{O2:50,H2:100}` then 2H2 + O2 = 2H2O might be ranked higher)
+
+
+             * d) filter based on simplicity (reactions with lots of molecules will be ranked lower - occams razor)
+
+
+             * e) filter based on gibbs free energy (this could be moved forward)  
+
+        '''
+        self.table = table
+        self.ncpus = 4
+        self.__dict__.update(kws)
+
+    def filter_table(
+        self,
+        initial_concentrations: dict
+    ) -> pd.DataFrame | pd.Series:
+        '''
+        1. find species with a concentration 
+        2. only find reactions which fit those species    
+
+        i.e. for {H2:10, O2: 10, H2O:10}    
+
+        it will be able to find: 
+        a) 2 H2 + O2 = 2H2O 
+        b) H2 + O2 = H2O2 
+        c) O3 = O2 
+        etc. 
+        '''
+
+        # get species present in initial concententrations
+        present_species = [compound for compound,
+                           concentration in initial_concentrations.items() if concentration]
+
+        # filter the reaction table to only show reactions that are possible
+        reaction_data = ["K", "G", "K_rev", "G_rev"]
+        species_cols = [
+            c for c in self.table.columns if c not in reaction_data]
+
+        disallowed = [c for c in species_cols if c not in present_species]
+
+        # disallowed never a          reactant
+        forward = (self.table[disallowed] >= 0).all(axis=1)
+        # disallowed never a          product
+        reverse = (self.table[disallowed] <= 0).all(axis=1)
+        filtered_table = self.table[forward | reverse]
+
+        return filtered_table
+
+    def stoichiometry_scores(
+        self,
+            filtered_table: pd.DataFrame,
+            concentrations: dict
+    ) -> pd.Series:
+        """Score each reaction on how well `concentrations` fit it, combining
+        ratio-fit (best-fitting direction) with how many of the reaction's
+        species are actually present. Returns a Series aligned to df's index."""
+
+        meta_cols = ('K', 'G', 'K_rev', 'G_rev',
+                     "availability_score", "simplicity_score", "gibbs_score", "combined_score")
+        species_cols = [
+            c for c in filtered_table.columns if c not in meta_cols]
+
+        def side_score(side):  # side: {species: positive coeff}
+            if not side:
+                return 0.0
+            extents = [concentrations.get(
+                s, 0) / c for s, c in side.items()]  #  edit
+            if max(extents) == 0:
+                return 0.0
+            return min(extents) / max(extents)
+
+        def score_row(row):
+            coeffs = {s: row[s]
+                      for s in species_cols if pd.notna(row[s]) and row[s] != 0}
+            if not coeffs:
+                return 0.0
+            reactants = {s: -c for s, c in coeffs.items() if c < 0}
+            products = {s:  c for s, c in coeffs.items() if c > 0}
+
+            ratio_fit = max(side_score(reactants), side_score(products))
+
+            # coverage: fraction of ALL species in the reaction that are present
+            present = sum(1 for s in coeffs if concentrations.get(s, 0) > 0)
+            coverage = present / len(coeffs)
+
+            return ratio_fit * coverage
+
+        return filtered_table.apply(score_row, axis=1)
+
+    def simplicity_scores(
+            self,
+            filtered_table: pd.DataFrame,
+            w_species: float = 0.5,  #  1.0
+            w_coeff: float = 1.0  # 0.5
+    ) -> pd.Series:
+        """Score each reaction on simplicity: fewer species and smaller
+        coefficients score higher. Returns a Series in (0, 1] on df's index."""
+
+        meta_cols = ('K', 'G', "K_rev", "G_rev",
+                     "availability_score", "simplicity_score", "gibbs_score", "combined_score")
+        species_cols = [
+            c for c in filtered_table.columns if c not in meta_cols]
+
+        def score_row(row):
+            coeffs = [abs(row[s]) for s in species_cols
+                      if pd.notna(row[s]) and row[s] != 0]
+            if not coeffs:
+                return 0.0
+            n_species = len(coeffs)
+            total_coeff = sum(coeffs)
+            # complexity grows with both; simplicity is its reciprocal
+            complexity = w_species * n_species + w_coeff * total_coeff
+            return 1.0 / complexity
+
+        return filtered_table.apply(score_row, axis=1)
+
+    def gibbs_scores(
+            self,
+            filtered_table: pd.DataFrame,
+            concentrations: dict,
+            g_fwd='G',
+            g_rev='G_rev',
+            scale=5.0
+    ) -> pd.Series:
+        """ΔG score that only credits a direction you can actually run.
+        Forward needs reactants present; reverse needs products present.
+        Among runnable directions, use the one equilibrium favors (lowest ΔG)."""
+
+        meta_cols = ('K', 'G', 'G_rev', "K_rev",
+                     "availability_score", "simplicity_score", "gibbs_score", "combined_score")
+        species_cols = [
+            c for c in filtered_table.columns if c not in meta_cols]
+
+        def all_present(side):
+            return bool(side) and all(concentrations.get(s, 0) > 0 for s in side)
+
+        def score_row(row):
+            coeffs = {s: row[s] for s in species_cols
+                      if pd.notna(row[s]) and row[s] != 0}
+            reactants = [s for s, c in coeffs.items() if c <
+                         0]   # forward inputs
+            products = [s for s, c in coeffs.items() if c >
+                        0]   # reverse inputs
+
+            candidates = []
+            if all_present(reactants):
+                candidates.append(row[g_fwd])
+            if all_present(products):
+                candidates.append(row[g_rev])
+            if not candidates:
+                return 0.0                       # can't feed either direction
+
+            # direction equilibrium proceeds
+            g = min(candidates)
+            return 1.0 / (1.0 + np.exp(g / scale))
+
+        return filtered_table.apply(score_row, axis=1)
+
+    def combined_scores(self,
+                        filtered_table: pd.DataFrame,
+                        weights=None,
+                        method='geometric',
+                        normalize=True,
+                        score_cols=('availability_score', 'simplicity_score', 'gibbs_score')):
+        """Combine sub-score columns into one final score.    
+        weights = {'availability_score': 1.0, 'simplicity_score': 1.0, 'gibbs_score': 1.0} (ratio of importance)
+        method='geometric': weighted geometric mean — a near-zero on ANY factor
+            tanks the total (use when all factors are necessary).
+        method='sum': weighted arithmetic mean — factors compensate for each other.
+        normalize: rescale each factor to [0,1] across the set first, so no factor
+            dominates just because of its raw range.
+        """
+        if weights is None:
+            weights = {c: 1.0 for c in score_cols}
+        w = np.array([weights[c] for c in score_cols], dtype=float)
+        w = w / w.sum()                                  # weights sum to 1
+
+        S = filtered_table[list(score_cols)].astype(float).copy()
+
+        # per-column min-max to [0,1]
+        if normalize:
+            rng = S.max() - S.min()
+            # avoid div-by-zero on flat cols
+            rng = rng.replace(0, 1)
+            S = (S - S.min()) / rng
+
+        if method == 'geometric':  #  check this
+            eps = 1e-9                                    # keep log finite at 0
+            final = np.exp((np.log(S + eps) * w).sum(axis=1))
+        elif method == 'sum':
+            final = (S * w).sum(axis=1)
+        else:
+            raise ValueError("method must be 'geometric' or 'sum'")
+
+        return final
+
+    def filter_and_sort_reactions_table(
+            self,
+            concentrations: dict,
+            # kws
+    ) -> pd.DataFrame:
+        # filter table
+        filtered_table = self.filter_table(
+            initial_concentrations=concentrations)
+        # sort table
+        availability_score = self.stoichiometry_scores(
+            filtered_table, concentrations)
+        simplicity_score = self.simplicity_scores(
+            filtered_table, w_species=1.0, w_coeff=0.5)
+        gibbs_score = self.gibbs_scores(filtered_table, concentrations)
+
+        filtered_table["availability_score"] = availability_score
+        filtered_table["simplicity_score"] = simplicity_score
+        filtered_table["gibbs_score"] = gibbs_score
+
+        combined_score = self.combined_scores(filtered_table, method="sum", weights={
+                                              'availability_score': 2.0, 'simplicity_score': 1.0, 'gibbs_score': 3.0})
+        filtered_table["combined_score"] = combined_score
+
+        final_table = filtered_table.sort_values(
+            by="combined_score", ascending=False)
+
+        return final_table
+
+
+####################################################################################################
+
+
+class GraphTraversal:
     def __init__(self, graph, max_reaction_length=5, **kws):
+        '''
+        Algorithm that traverses the graph - legacy version of ARCS. 
+        '''
         self.graph = graph
 
         # default values:

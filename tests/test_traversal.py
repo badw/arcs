@@ -18,7 +18,7 @@ def test_length_multiplier():
         temperature=248,
         pressure=20,
     )
-    t = Traversal(graph=graph)
+    t = GraphTraversal(graph=graph)
     t.length_multiplier(0)
     assert t.length_multiplier(0) == 6
 
@@ -30,7 +30,7 @@ def test_get_weighted_random_compounds():
         temperature=248,
         pressure=20,
     )
-    t = Traversal(graph=graph)
+    t = GraphTraversal(graph=graph)
     ic = {"H2O": 1, "O2": 0.5, "H2": 0.5, "H2O2": 0.5}
     assert t.get_weighted_random_compounds(concentrations=ic) == [
         np.str_('H2O'), np.str_('O2')]
@@ -43,7 +43,7 @@ def test_check_reactant_atoms():
         temperature=248,
         pressure=20,
     )
-    t = Traversal(graph=graph)
+    t = GraphTraversal(graph=graph)
     ic = {"H2O": 1, "O2": 0.5, "H2": 0.5, "H2O2": 0.5}
     weighted_random_compounds = t.get_weighted_random_compounds(
         concentrations=ic)
@@ -58,7 +58,7 @@ def test_scale_large_concentrations():
         temperature=248,
         pressure=20,
     )
-    t = Traversal(graph=graph)
+    t = GraphTraversal(graph=graph)
     ic = {"H2O": 1000, "O2": 0.5, "H2": 0.5, "H2O2": 0.5}
     assert t.scale_large_concentrations(
         ic) == {'H2O': 100.0, 'O2': 0.5, 'H2': 0.5, 'H2O2': 0.5}
@@ -71,7 +71,7 @@ def test_get_weighted_reaction_rankings():
         temperature=248,
         pressure=20,
     )
-    t = Traversal(graph=graph)
+    t = GraphTraversal(graph=graph)
     ic = {"H2O": 1, "O2": 0.5, "H2": 0.5, "H2O2": 0.5}
     weighted_random_compounds = t.get_weighted_random_compounds(
         concentrations=ic)
@@ -90,7 +90,7 @@ def test_choose_reaction():
         temperature=248,
         pressure=20,
     )
-    t = Traversal(graph=graph)
+    t = GraphTraversal(graph=graph)
     ic = {"H2O": 1, "O2": 0.5, "H2": 0.5, "H2O2": 0.5}
     weighted_random_compounds = t.get_weighted_random_compounds(
         concentrations=ic)
@@ -108,7 +108,7 @@ def test_generate_chempy_eqsystem():
         temperature=248,
         pressure=20,
     )
-    t = Traversal(graph=graph)
+    t = GraphTraversal(graph=graph)
     assert t.generate_chempy_eqsystem(
         0).string() == '2 H2 + O2 = 2 H2O; 8.03e+112\n'
 
@@ -120,7 +120,7 @@ def test_chempy_equilibrium_concentrations():
         temperature=248,
         pressure=20,
     )
-    t = Traversal(graph=graph)
+    t = GraphTraversal(graph=graph)
     ic = {"H2O": 1, "O2": 0.5, "H2": 0.5, "H2O2": 0.5}
     chempy_eqsystem = t.generate_chempy_eqsystem(1)
 
@@ -155,7 +155,7 @@ def test_random_walk():
         temperature=248,
         pressure=20,
     )
-    t = Traversal(graph=graph)
+    t = GraphTraversal(graph=graph)
     ic = {"H2O": 1, "O2": 0.5, "H2": 0.5, "H2O2": 0.5}
     assert t.random_walk(ic, chempy_sane=True) == {'concentrations': {0: {'H2O': 1, 'O2': 0.5, 'H2': 0.5, 'H2O2': 0.5},
                                                                       1: {'H2O': 1,
@@ -193,7 +193,7 @@ def test_sampling_function():
         temperature=248,
         pressure=20,
     )
-    t = Traversal(graph=graph)
+    t = GraphTraversal(graph=graph)
     ic = {"H2O": 1, "O2": 0.5, "H2": 0.5, "H2O2": 0.5}
     t.initial_concentrations = ic
     assert t.sampling_function(0) == {'concentrations': {0: {'H2O': 1, 'O2': 0.5, 'H2': 0.5, 'H2O2': 0.5},
@@ -231,7 +231,7 @@ def test_sample():
         temperature=248,
         pressure=20,
     )
-    t = Traversal(graph=graph)
+    t = GraphTraversal(graph=graph)
     ic = {"H2O": 1, "O2": 0.5, "H2": 0.5, "H2O2": 0.5}
     results = t.sample(initial_concentrations=ic,
                        ncpus=1,
