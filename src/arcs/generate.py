@@ -17,6 +17,7 @@ from monty.serialization import loadfn
 import warnings
 from deprecated import deprecated
 import pandas as pd
+from typing import Union
 
 
 def get_compound_directory(base, compound, size):
@@ -720,7 +721,7 @@ class GraphGenerator:
         temperature: float,  # in K
         applied_reactions: list,
         log_K: bool = False,
-    ) -> nx.multidigraph:
+    ) -> nx.MultiDiGraph:
         """
         This function generates reaction graph in networkx weighted using the self.costfunction
         returns an nx.multidigraph object
@@ -826,9 +827,7 @@ class GraphGenerator:
 
     def generate_table(
         self,
-        temperature: float,  # in K
         applied_reactions: list,
-        log_K: bool = False,
     ) -> pd.DataFrame:
         """
         This function generates reaction graph in networkx weighted using the self.costfunction
@@ -842,8 +841,6 @@ class GraphGenerator:
             table_dict[i] = {
                 "reactants": reaction["r"]["reactants"],
                 "products": reaction["r"]["products"],
-                # "forward_cost": forward_cost,
-                # "backward_cost": backward_cost,
                 "K": reaction["k"],
                 "G": reaction["g"],
                 "G_rev": reaction["g_rev"],
@@ -855,14 +852,14 @@ class GraphGenerator:
 
     def from_file(
         self,
-        filename: str | os.PathLike | Traversable,
+        filename: Union[str, os.PathLike, Traversable],
         temperature: float,  # in K
         pressure: float,  # in bar
         max_reaction_length: int = 5,
         log_K: bool = False,
         filter_large_gibbs: bool = True,
-        graph=True
-    ) -> nx.MultiDiGraph | pd.DataFrame:
+        graph: bool = True
+    ) -> Union[nx.MultiDiGraph, pd.DataFrame]:
         """
             generates a networkx.multidigraph from a .json file of reactions and quantum_dict generated with reactit and GetEnergyandVibrationsVASP
             needs a sanity check on the file though

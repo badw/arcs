@@ -9,6 +9,7 @@ import itertools as it
 from arcs.generate import parse_molecule
 from scipy.optimize import fsolve
 import pandas as pd
+from typing import Union
 
 
 class TableTraversal:
@@ -39,7 +40,7 @@ class TableTraversal:
     def filter_table(
         self,
         initial_concentrations: dict
-    ) -> pd.DataFrame | pd.Series:
+    ) -> Union[pd.DataFrame, pd.Series]:
         '''
         1. find species with a concentration 
         2. only find reactions which fit those species    
@@ -73,27 +74,36 @@ class TableTraversal:
         return filtered_table
 
     def stoichiometry_scores(
-        self,
-            filtered_table: pd.DataFrame,
-            concentrations: dict
+            self,
+            table: pd.DataFrame,
+            concentrations: dict,
+            c_half=1.0
     ) -> pd.Series:
-        """Score each reaction on how well `concentrations` fit it, combining
-        ratio-fit (best-fitting direction) with how many of the reaction's
-        species are actually present. Returns a Series aligned to df's index."""
+        """Concentration-aware stoichiometry score. Combines:
+          - ratio_fit : how well concentrations match the side's stoichiometry
+          - magnitude : how much reaction can actually run (limiting extent)
+          - coverage  : fraction of the reaction's species that are present
+        Best-fitting direction wins. Returns a Series on df's index.    
 
+        c_half: throughput at which magnitude = 0.5 (tune to your conc scale).
+        """
         meta_cols = ('K', 'G', 'K_rev', 'G_rev',
                      "availability_score", "simplicity_score", "gibbs_score", "combined_score")
-        species_cols = [
-            c for c in filtered_table.columns if c not in meta_cols]
+        species_cols = [c for c in table.columns if c not in meta_cols]
 
-        def side_score(side):  # side: {species: positive coeff}
+        # side: {species: positive coeff}
+        def side_score(side):
             if not side:
                 return 0.0
-            extents = [concentrations.get(
-                s, 0) / c for s, c in side.items()]  #  edit
+            extents = [concentrations.get(s, 0) / c for s, c in side.items()]
             if max(extents) == 0:
                 return 0.0
-            return min(extents) / max(extents)
+            ratio_fit = min(extents) / max(extents)     # scale-invariant match
+            # limiting extent (real units)
+            throughput = min(extents)
+            # saturating → [0,1)
+            magnitude = throughput / (throughput + c_half)
+            return ratio_fit * magnitude
 
         def score_row(row):
             coeffs = {s: row[s]
@@ -103,15 +113,13 @@ class TableTraversal:
             reactants = {s: -c for s, c in coeffs.items() if c < 0}
             products = {s:  c for s, c in coeffs.items() if c > 0}
 
-            ratio_fit = max(side_score(reactants), side_score(products))
+            best = max(side_score(reactants), side_score(products))
 
-            # coverage: fraction of ALL species in the reaction that are present
             present = sum(1 for s in coeffs if concentrations.get(s, 0) > 0)
             coverage = present / len(coeffs)
+            return best * coverage
 
-            return ratio_fit * coverage
-
-        return filtered_table.apply(score_row, axis=1)
+        return table.apply(score_row, axis=1)
 
     def simplicity_scores(
             self,
@@ -188,6 +196,8 @@ class TableTraversal:
                         method='geometric',
                         normalize=True,
                         score_cols=('availability_score', 'simplicity_score', 'gibbs_score')):
+
+        # needs all the scores present in the dataframe
         """Combine sub-score columns into one final score.    
         weights = {'availability_score': 1.0, 'simplicity_score': 1.0, 'gibbs_score': 1.0} (ratio of importance)
         method='geometric': weighted geometric mean — a near-zero on ANY factor
@@ -197,6 +207,7 @@ class TableTraversal:
             dominates just because of its raw range.
         """
         if weights is None:
+            #  hard code this in... as variable
             weights = {c: 1.0 for c in score_cols}
         w = np.array([weights[c] for c in score_cols], dtype=float)
         w = w / w.sum()                                  # weights sum to 1
