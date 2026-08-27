@@ -85,6 +85,50 @@ def parse_molecule(formula: str) -> dict:
     return dict(total_counts)
 
 
+def cost_function(
+    gibbs_free_energy: float,  # in eV
+    temperature: float,  # in K
+    reactants: dict,
+    normalise_by_reactant_atoms: bool = True
+) -> float:
+    """
+    takes a gibbs free energy of reaction and normalises it using a cost function taken from:
+    https://www.nature.com/articles/s41467-021-23339-x.pdf which takes the form:
+    cost = ln(1+(273/temperature)*exp(G/num_reactant_atoms))
+
+    (this is normalised per reactant atom)
+
+    i.e. CO2 + H2 = H2O + CO
+
+    num_reactant_atoms = 5
+
+    """
+    if normalise_by_reactant_atoms:
+        compounds = []
+        for reactant, coefficient in reactants.items():
+            for i in range(coefficient):
+                compounds.append(reactant)
+
+        num_atoms = np.sum(
+            [
+                np.sum(
+                    [
+                        y for x, y in parse_molecule(compound).items()
+                    ]
+                )
+                for compound in compounds
+            ]
+        )
+    else:
+        num_atoms = 1
+
+    return (
+        np.log(
+            1 + (273 / temperature) * np.exp(gibbs_free_energy / num_atoms)
+        )
+    )
+
+
 class GetEnergyandVibrationsAseCalc:
     """Class to get the Total Energy and Vibrations from a directory containing a calculations"""
 
@@ -672,50 +716,6 @@ class GraphGenerator:
         self.quantum_dict_metadata = None
         # self.applied_reactions = applied_reactions
 
-    def cost_function(
-        self,
-        gibbs_free_energy: float,  # in eV
-        temperature: float,  # in K
-        reactants: dict,
-        normalise_by_reactant_atoms: bool = True
-    ) -> float:
-        """
-        takes a gibbs free energy of reaction and normalises it using a cost function taken from:
-        https://www.nature.com/articles/s41467-021-23339-x.pdf which takes the form:
-        cost = ln(1+(273/temperature)*exp(G/num_reactant_atoms))
-
-        (this is normalised per reactant atom)
-
-        i.e. CO2 + H2 = H2O + CO
-
-        num_reactant_atoms = 5
-
-        """
-        if normalise_by_reactant_atoms:
-            compounds = []
-            for reactant, coefficient in reactants.items():
-                for i in range(coefficient):
-                    compounds.append(reactant)
-
-            num_atoms = np.sum(
-                [
-                    np.sum(
-                        [
-                            y for x, y in parse_molecule(compound).items()
-                        ]
-                    )
-                    for compound in compounds
-                ]
-            )
-        else:
-            num_atoms = 1
-
-        return (
-            np.log(
-                1 + (273 / temperature) * np.exp(gibbs_free_energy / num_atoms)
-            )
-        )
-
     def generate_multidigraph(
         self,
         temperature: float,  # in K
@@ -730,12 +730,12 @@ class GraphGenerator:
         graph = nx.MultiDiGraph(directed=True)
 
         for i, reaction in enumerate(applied_reactions):
-            forward_cost = self.cost_function(
+            forward_cost = cost_function(
                 gibbs_free_energy=reaction["g"],
                 temperature=temperature,
                 reactants=reaction["r"]["reactants"],
             )
-            backward_cost = self.cost_function(
+            backward_cost = cost_function(
                 gibbs_free_energy=-reaction["g"],
                 temperature=temperature,
                 reactants=reaction["r"]["products"],
@@ -858,7 +858,7 @@ class GraphGenerator:
         max_reaction_length: int = 5,
         log_K: bool = False,
         filter_large_gibbs: bool = True,
-        graph: bool = True
+        graph: bool = True,
     ) -> Union[nx.MultiDiGraph, pd.DataFrame]:
         """
             generates a networkx.multidigraph from a .json file of reactions and quantum_dict generated with reactit and GetEnergyandVibrationsVASP
@@ -915,12 +915,15 @@ class GraphGenerator:
             graph = self.generate_multidigraph(
                 applied_reactions=applied_reactions, temperature=temperature, log_K=log_K
             )
-        else:
-            graph = self.generate_table(
-                applied_reactions=applied_reactions, temperature=temperature, log_K=log_K)
-        rge.raise_warnings()
+            rge.raise_warnings()
 
-        return graph
+            return graph
+        else:
+            table = self.generate_table(
+                applied_reactions=applied_reactions)
+            rge.raise_warnings()
+
+            return table
 
     @staticmethod
     def reduce_reactions(reactions_list, max_reaction_length=4):
