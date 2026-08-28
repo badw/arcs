@@ -331,9 +331,9 @@ class TableTraversal:
             #  experimental - may not be needed
             method: str = "sum",
             score_weighting: dict = {
-                'availability_score': 1.0,
+                'availability_score': 2.0,
                 'simplicity_score': 1.0,
-                'gibbs_score': 1.0,
+                'gibbs_score': 2.0,
                 "quotient_score": 1.0
             },
             w_species: float = 1.0,
@@ -409,43 +409,19 @@ class TableTraversal:
         result["products"] = {s: fmt(c) for s, c in products.items()}
         return result
 
-    def choose_reaction_prev(
+    def choose_reaction(
             self,
             filtered_table: pd.DataFrame,
-            head: Optional[int] = None,
-            multiplier: int = 2,
-            choice_score: str = "combined_score"
-    ) -> int:
-        """
-        given a dictionary of ranked reactions from self.get_weighted_reaction_rankings
-        chose a reaction based on weights and probabilities
-        """
-        weights = {
-            k: v**multiplier for k, v in filtered_table["combined_score"].head(head).items()
-        }  # taking the square?
-        # weights = {k:1/v**2 for k,v in ranked_reactions["combined_score"].items()}
-        # added a square multiplier to force more the larger coefficients
-        probabilities = {k: v / sum(weights.values())
-                         for k, v in weights.items()}
-
-        chosen_reaction = np.random.choice(
-            a=np.array(
-                list(probabilities)
-            ),
-            p=np.array(
-                list(probabilities.values())
-            )
-        )
-        return chosen_reaction
-
-    def choose_reaction(self, filtered_table, score_col='combined_score', choice_temp=0.3,
-                        mode='softmax', rng=None):
+            score_col='combined_score',
+            choice_temp=0.8,
+            mode='softmax',
+            return_probabilities: bool = False
+    ):
         """Probabilistic pick that sharpens a flat score landscape.    
 
         mode='softmax': p ∝ exp(score / T). Low T → nearly greedy, high T → uniform.
         mode='rank':    sample by rank, discarding the (flat) magnitudes entirely.
         """
-        rng = rng or np.random.default_rng()
 
         if mode == 'rank':
             s = filtered_table[score_col].rank(
@@ -459,10 +435,12 @@ class TableTraversal:
         p = np.exp(z)
         p /= p.sum()
 
-        idx = rng.choice(filtered_table.index, p=p)
-        return filtered_table.loc[idx], p
+        idx = np.random.default_rng().choice(filtered_table.index, p=p)
+        if return_probabilities:
+            return p
+        else:
+            return filtered_table.loc[idx]
 
-    # this is clunky -shouldn't send the whole table
     def generate_chempy_eqsystem(
             self,
             reaction_dict: dict,
@@ -543,8 +521,8 @@ class TableTraversal:
             chosen_reaction = self.choose_reaction(
                 final_table,
                 choice_temp=choice_temp,
-                mode="mode"
-            )[0].name
+                mode=mode
+            ).name
             # 2.
             reaction_dict = self.row_to_reaction(
                 final_table.T[chosen_reaction])
@@ -561,19 +539,48 @@ class TableTraversal:
 
         return new_concs, chosen_reaction
 
+    @staticmethod
+    def check_convergence(concentration_stats, tol=0.5, frac=0.5, how_far_back=5):
+        """
+        Returns True if the majority of rows have all values within `tol` of each other.
+
+        tol  : max allowed spread (max - min) within a row
+        frac : fraction of rows that must converge (0.5 = strict majority)
+        """
+
+        how_far_back = 5
+
+        dfs = [
+            pd.DataFrame(
+                [
+                    x for x in concentration_stats[i][1:] if x
+                ]
+            ) for i in range(
+                len(concentration_stats)-how_far_back, len(concentration_stats)
+            )
+        ]
+        dfs = pd.DataFrame(
+            [df[df > 0].dropna(axis=1, how="all").mean() for df in dfs]
+        ).T.round(2)
+
+        row_spread = dfs.max(axis=1) - dfs.min(axis=1)
+        converged = row_spread <= tol
+        return converged.mean() > frac
+
     def outer_loop(self,
                    initial_concentrations: Union[dict, pd.Series],
                    path_length: int = 50,
                    inner_loop_runs: int = 50,
                    method: str = "sum",
                    score_weighting: dict = {
-                       'availability_score': 1.0, 'simplicity_score': 1.0, 'gibbs_score': 1.0, "quotient_score": 1.0
+                       'availability_score': 2.0, 'simplicity_score': 1.0, 'gibbs_score': 2.0, "quotient_score": 1.0
                    },
                    normalise=False,
                    w_species: float = 1.0,
                    w_coeff: float = 0.5,
-                   choice_temp: float = 0.3,
-                   mode="softmax"
+                   choice_temp: float = 0.8,
+                   mode="softmax",
+                   convergence_how_far_back=5
                    ):
         reaction_stats = defaultdict(list)
         concentration_stats = defaultdict(list)
@@ -602,6 +609,7 @@ class TableTraversal:
                 )
                 scoring_stats[i] = final_table.filter(
                     ["availability_score", "gibbs_score", "simplicity_score", "quotient_score", "combined_score"])
+
             #  the first entry is always the previous concentrations (mean)
             if i == 0:
                 reaction_stats[i].append(None)
@@ -616,6 +624,12 @@ class TableTraversal:
                     )
                     reaction_stats[i].append(_reaction)
                     concentration_stats[i].append(_conc)
+                if i > convergence_how_far_back:
+                    converged = self.check_convergence(
+                        concentration_stats=concentration_stats, how_far_back=convergence_how_far_back)
+                    if converged:
+                        print("convergence reached.")
+                        break
 
         return concentration_stats, reaction_stats, scoring_stats
 
