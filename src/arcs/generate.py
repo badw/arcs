@@ -850,6 +850,28 @@ class GraphGenerator:
 
         return self.reformat_table(table_dict)
 
+    def is_spin_allowed(self, reaction_dict: dict, spins: dict) -> bool:
+        """
+        checks whether a reaction is spin allowed, takes the spin value from the quantum_dict
+        """
+        def reachable(side):
+            totals = {0.0}
+            for species, count in side.items():
+                s = spins[species]
+                for _ in range(count):          # add this species' spin `count` times
+                    nxt = set()
+                    for S in totals:
+                        k = abs(S - s)
+                        while k <= S + s + 1e-9:
+                            nxt.add(round(k, 1))
+                            k += 1.0
+                    totals = nxt
+            return totals
+
+        react = reachable(reaction_dict['reactants'])
+        prod = reachable(reaction_dict['products'])
+        return bool(react & prod)
+
     def from_file(
         self,
         filename: Union[str, os.PathLike, Traversable],
@@ -859,6 +881,7 @@ class GraphGenerator:
         log_K: bool = False,
         filter_large_gibbs: bool = True,
         graph: bool = True,
+        allow_spin_disallowed_reactions: bool = False
     ) -> Union[nx.MultiDiGraph, pd.DataFrame]:
         """
             generates a networkx.multidigraph from a .json file of reactions and quantum_dict generated with reactit and GetEnergyandVibrationsVASP
@@ -897,6 +920,18 @@ class GraphGenerator:
 
         rge = ReactionGibbsandEquilibrium(quantum_dict, log_K=log_K)
         applied_reactions = []
+
+        if not allow_spin_disallowed_reactions:
+            spins = {
+                compound: data["spin"] for compound, data in quantum_dict.items() if compound not in ["reactions", "compound_reference", "metadata"]
+            }
+            allowed_reactions = [
+                idx for idx, reaction_dict in quantum_dict["reactions"].items(
+                ) if self.is_spin_allowed(reaction_dict, spins)
+            ]
+            quantum_dict["reactions"] = {
+                idx: quantum_dict["reactions"][idx] for idx in allowed_reactions}
+
         for reaction in quantum_dict["reactions"].values():
             if (
                 len(reaction["reactants"]) + len(reaction["products"])
@@ -935,75 +970,6 @@ class GraphGenerator:
             ):
                 rs.append(reaction)
         return rs
-
-    def from_dict(
-        self,
-        quantum_dict: str,
-        temperature: float,  # in K
-        pressure: float,  # in bar
-        max_reaction_length: int = 5,
-        log_K: bool = False,
-        filter_large_gibbs: bool = True
-    ) -> nx.MultiDiGraph:
-        """
-            generates a networkx.multidigraph from a dict representation of the .json file of reactions and quantum_dict generated with reactit and GetEnergyandVibrationsVASP
-            needs a sanity check on the file though
-
-            dictionary takes the format of:
-                    {
-        '<compound>': {
-            'atoms': ase.Atoms.asdict(),
-            'pointgroup': <pointgroup>,
-            'spin': <spin>,
-            'rotation_num': <rotation_num>,
-            'islinear': <islinear>,
-            'energy': <energy>,
-            'vibrations': <vibrations
-            }
-        'reactions':list({
-            'reaction_string':<reaction_string>,
-                          'reactants':dict(reactants),
-                          'products':dict(products)}
-                          )
-            }
-
-            reactions can be generated with https://github.com/badw/reactit.git
-        """
-
-        # some metadata for posterity
-        if "metadata" in quantum_dict:
-            self.quantum_dict_metadata = quantum_dict["metadata"]
-
-        try:
-            self.compound_reference = {k: v["SMILES"]
-                                       for k, v in quantum_dict.items() if k not in ["metadata", "reactions"]}
-        except Exception:
-            self.compound_reference = [list(quantum_dict)]
-
-        rge = ReactionGibbsandEquilibrium(quantum_dict, log_K=log_K)
-        applied_reactions = []
-        reduced_reactions = self.reduce_reactions(
-            quantum_dict["reactions"], max_reaction_length=max_reaction_length)
-
-        for reaction in reduced_reactions:
-            # if (
-            #    len(reaction["reactants"]) + len(reaction["products"])
-            #    <= max_reaction_length
-            # ):
-            g_k_dict = rge.get_reaction_gibbs_and_equilibrium(
-                reaction=reaction, temperature=temperature, pressure=pressure, filter_large_gibbs=filter_large_gibbs
-            )
-            g_k_dict["r"] = reaction
-            if filter_large_gibbs:
-                if np.abs(g_k_dict["g"]) <= self.gibbs_filter:
-                    applied_reactions.append(g_k_dict)
-            else:
-                applied_reactions.append(g_k_dict)
-
-        graph = self.generate_multidigraph(
-            applied_reactions=applied_reactions, temperature=temperature
-        )
-        return graph
 
 
 class GenerateInitialConcentrations:
