@@ -1,11 +1,27 @@
 site_name: ARCS
+site_description: ARCS — Automated Reactions for CO2 Storage
 site_url: https://badw.github.io/arcs/
+repo_url: https://github.com/badw/arcs
+repo_name: badw/arcs
+edit_uri: edit/docs/docs/
+
 theme:
-  logo: assets/ARCS_Logo.png
   name: material
+  logo: assets/ARCS_Logo.png
+  favicon: assets/ARCS_Logo.png
+  icon:
+    repo: fontawesome/brands/github
   features:
-    - navigation.instant # Seamless page loads
-    - navigation.tracking # Highlights TOC as you scroll
+    - navigation.instant   # Seamless page loads
+    - navigation.tracking  # Highlights TOC as you scroll
+    - navigation.sections  # Group sections in the sidebar
+    - navigation.top       # Back-to-top button
+    - navigation.footer    # Prev/next links in the footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy    # Copy button on code blocks
+    - content.code.annotate
   palette:
     # Minimalist Light Mode
     - media: "(prefers-color-scheme: light)"
@@ -24,5 +40,71 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
   font:
-    text: Inter # Clean, modern sans-serif
+    text: Inter            # Clean, modern sans-serif
     code: JetBrains Mono
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_section_style: table
+            show_if_no_docstring: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            show_source: true
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+            merge_init_into_class: true
+            filters: ["!^_"]
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - footnotes
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Quickstart: quickstart.md
+  - User Guide:
+      - How ARCS works: guide/how-it-works.md
+      - Building the reaction graph: guide/building-the-graph.md
+      - Initial concentrations: guide/concentrations.md
+      - Sampling the network: guide/sampling.md
+      - Analysing results: guide/analysis.md
+  - API Reference:
+      - arcs.generate: api/generate.md
+      - arcs.traversal: api/traversal.md
+      - arcs.analysis: api/analysis.md
+      - arcs.errors: api/errors.md

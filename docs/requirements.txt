@@ -1,2 +1,4 @@
-mkdocs 
+mkdocs
 mkdocs-material
+mkdocstrings[python]
+black
