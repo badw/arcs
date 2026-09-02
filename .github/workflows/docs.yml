@@ -2,7 +2,7 @@ name: Deploy docs
 on:
   push:
     branches:
-      - main   # change to 'master' if that's your default branch
+      - docs # change to 'master' if that's your default branch
 permissions:
   contents: write
 jobs:
