@@ -41,7 +41,9 @@ dependencies = [
         'pywebview',
         'setproctitle',
         'pytest',
-        'deprecated'
+        'deprecated',
+        'mkdocs',
+        'mkdocs-material'
 ]
 
 [project.optional-dependencies]
