@@ -1,9 +1,10 @@
 site_name: ARCS
+site_url: https://badw.github.io/arcs/
 theme:
   logo: assets/ARCS_Logo.png
   name: material
   features:
-    - navigation.instant  # Seamless page loads
+    - navigation.instant # Seamless page loads
     - navigation.tracking # Highlights TOC as you scroll
   palette:
     # Minimalist Light Mode
@@ -23,6 +24,5 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
   font:
-    text: Inter       # Clean, modern sans-serif
+    text: Inter # Clean, modern sans-serif
     code: JetBrains Mono
-  
